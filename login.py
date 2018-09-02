@@ -7,6 +7,7 @@ import http.cookiejar
 import time
 import math
 import dateparser
+import datetime
 import contextlib
 import logging
 
@@ -43,7 +44,8 @@ class NewsInformer(object):
             primary_id=False,
         )
 
-    def send_notification(self, news_id, text, title, attachment=None, timestamp=True):
+    def send_notification(
+            self, news_id, text, title, attachment=None, timestamp=True):
         logger.info('sending notification: %s', title)
         text = text.replace('<br>', '\n')
         try:
@@ -61,7 +63,8 @@ class NewsInformer(object):
             self.logger.error('Sending notification failed', exc_info=e)
 
     def _notification_sent(self, news_id):
-        entry = self.db_notification.find_one(id=news_id, username=self.username)
+        entry = self.db_notification.find_one(
+            id=news_id, username=self.username)
         return entry is not None
 
     def notify_news(self):
@@ -79,7 +82,8 @@ class NewsInformer(object):
                 }
                 self.db_news.insert(storenewsdata)
             if not self._notification_sent(news_item['id']):
-                logger.info('Notify %s about %s', self.username, news_item['title'])
+                logger.info('Notify %s about %s',
+                            self.username, news_item['title'])
                 image = None
                 image_filename = im.get_newsimage(news_item['id'])
                 if image_filename:
@@ -272,6 +276,21 @@ class Infomentor(object):
         )
         return r.json()
 
+    def get_homework(self):
+        now = datetime.datetime.now()
+        dayofweek = now.weekday
+        startofweek = now - datetime.timedelta(days=-dayofweek)
+        timestamp = startofweek.strftime('%Y-%m-%dT00:00:00.000Z')
+        data = {
+            'date': timestamp,
+            'isWeek': True,
+        }
+        r = self._do_post(
+            self._mim_url('Homework/homework/GetHomework'),
+            data=data
+        )
+        return r.json()
+
 
 def main():
     db_users = db.create_table(
@@ -282,7 +301,7 @@ def main():
     for user in db_users:
         if user['password'] == '':
             logger.warning('User %s not enabled', user['username'])
-            continue;
+            continue
         ni = NewsInformer(**user)
         ni.notify_news()
 
