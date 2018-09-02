@@ -257,7 +257,7 @@ class Infomentor(object):
             return False
         with open(filename, 'wb+') as f:
             f.write(r.content)
-        return True
+        return filename
 
     def get_calendar(self):
         data = {
