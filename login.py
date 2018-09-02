@@ -250,7 +250,7 @@ class Infomentor(object):
         filename = 'images/{}.image'.format(id)
         if os.path.isfile(filename):
             self.logger.info('image %s already downloaded', filename)
-            return True
+            return filename
         url = self._mim_url('News/NewsImage/GetImage?id={}'.format(id))
         r = self._do_get(url)
         if r.status_code != 200:
