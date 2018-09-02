@@ -38,7 +38,7 @@ class NewsInformer(object):
         )
         self.db_notification = db.create_table(
             'news_notification',
-            primary_id='id',
+            primary_id='theid',
             primary_type=db.types.integer
         )
 
