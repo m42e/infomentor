@@ -1,18 +1,97 @@
 import requests
 import re
+import os
 import dataset
 import pushover
 import http.cookiejar
 import time
 import math
 import dateparser
+import contextlib
 import logging
 
 
 db = dataset.connect('sqlite:///infomentor.db')
 pushover.init('***REMOVED***')
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('Infomentor Notifier')
+
+
+class NewsInformer(object):
+    def __init__(self, username, password, pushover, logger=None):
+        if logger is None:
+            logger = logging.getLogger(__name__)
+        self.username = username
+        self.password = password
+        self.pushover = pushover
+        self._setup_db()
+        self.im = Infomentor(logger=logger)
+
+    def _setup_db(self):
+        self.db_news = db.create_table(
+            'news',
+            primary_id='id',
+            primary_type=db.types.integer
+        )
+        self.db_notification = db.create_table(
+            'news_notification',
+            primary_id='id',
+            primary_type=db.types.integer
+        )
+
+    def send_notification(self, news_id, text, title, attachment=None, timestamp=True):
+        logger.info('sending notification: %s', title)
+        text = text.replace('<br>', '\n')
+        try:
+            pushover.Client(self.pushover).send_message(
+                text,
+                title=title,
+                attachment=attachment,
+                html=True,
+                timestamp=timestamp
+            )
+            self.db_notification.insert(
+                {'id': news_id, 'username': self.username}
+            )
+        except pushover.RequestError as e:
+            self.logger.error('Sending notification failed', exc_info=e)
+
+    def _notification_sent(self, news_id):
+        entry = self.db_notification.find_one(id=news_id, username=self.username)
+        return entry is not None
+
+    def notify_news(self):
+        im = Infomentor(logger=logger)
+        im.login(self.username, self.password)
+        im_news = im.get_news()
+        logger.info('Parsing %d news', im_news['totalItems'])
+        for news_item in im_news['items']:
+            storenewsdata = self.db_news.find_one(id=news_item['id'])
+            if storenewsdata is None:
+                logger.info('NEW article found %s', news_item['title'])
+                newsdata = im.get_article(news_item['id'])
+                storenewsdata = {
+                    k: newsdata[k] for k in ('id', 'title', 'content', 'date')
+                }
+                self.db_news.insert(storenewsdata)
+            if not self._notification_sent(news_item['id']):
+                logger.info('Notify %s about %s', self.username, news_item['title'])
+                image = None
+                if im.get_newsimage(news_item['id']):
+                    image = open('{}.image'.format(news_item['id']), 'rb')
+
+                parsed_date = dateparser.parse(storenewsdata['date'])
+                timestamp = math.floor(parsed_date.timestamp())
+                self.send_notification(
+                    news_item['id'],
+                    storenewsdata['content'],
+                    storenewsdata['title'],
+                    attachment=image,
+                    timestamp=timestamp
+                )
+                if image is not None:
+                    image.close()
+
 
 class Infomentor(object):
 
@@ -25,12 +104,13 @@ class Infomentor(object):
         self.logger = logger
 
         self.session = requests.Session()
-        self.session.cookies = http.cookiejar.MozillaCookieJar(filename='im.cookies')
-        self.session.cookies.load(ignore_discard=True, ignore_expires=True)
         self.session.headers.update({'User-Agent': 'Mozilla/5.0'})
         self._last_result = None
 
     def login(self, user, password):
+        self.session.cookies = http.cookiejar.MozillaCookieJar(filename='{}.cookies'.format(user))
+        with contextlib.suppress(FileNotFoundError):
+            self.session.cookies.load(ignore_discard=True, ignore_expires=True)
         if not self.logged_in():
             self._do_login(user, password)
 
@@ -45,6 +125,7 @@ class Infomentor(object):
         rem = re.findall(r'name="oauth_token" value="([^"]*)"',
                          self._last_result.text)
         if len(rem) != 1:
+            self.logger.error('OAUTH_TOKEN not found')
             raise Exception('Invalid Count of tokens')
         oauth_token = rem[0]
         return oauth_token
@@ -83,10 +164,12 @@ class Infomentor(object):
         for f in hiddenfields:
             names = re.findall('name="([^"]*)"', f)
             if len(names) != 1:
-                raise Exception('Invalid Count of fieldnames')
+                self.logger.error('Could not parse hidden field (fieldname)')
+                continue
             values = re.findall('value="([^"]*)"', f)
             if len(values) != 1:
-                raise Exception('Invalid Count of values')
+                self.logger.error('Could not parse hidden field (value)')
+                continue
             field_values[names[0]] = values[0]
         return field_values
 
@@ -151,14 +234,16 @@ class Infomentor(object):
 
     def get_newsimage(self, id):
         self.logger.info('fetching article image: %s', id)
+        filename = '{}.image'.format(id)
+        if os.path.isfile(filename):
+            return True
         url = self._mim_url('News/NewsImage/GetImage?id={}'.format(id))
         r = self._do_get(url)
         if r.status_code != 200:
             return False
-        with open('{}.image'.format(id), 'wb+') as f:
+        with open(filename, 'wb+') as f:
             f.write(r.content)
         return True
-
 
     def get_calendar(self):
         data = {
@@ -167,43 +252,27 @@ class Infomentor(object):
             'end': '2019-09-01'
         }
         self.logger.info('fetching calendar')
-        r = self._do_post(self._mim_url('Calendar/Calendar/getEntries'), data=data)
+        r = self._do_post(
+            self._mim_url('Calendar/Calendar/getEntries'),
+            data=data
+        )
         return r.json()
-
-def send_notification(text, title, attachment=None, timestamp=True):
-    logger.info('sending notification: %s', title)
-    text = text.replace('<br>', '\n')
-    pushover.Client('u5w9h8gc7hpzvr5a2kh2xh4m9zpidq').send_message(text, title=title, attachment=attachment, html=True, timestamp=timestamp)
-
 
 
 def main():
-    im = Infomentor(logger=logger)
-    im.login('mbilger', 'jpEWG9hK8vXA8NaJFuKf')
-    im_news = im.get_news()
-    db_news = db.create_table('news', primary_id='id', primary_type=db.types.integer)
-    for news_item in im_news['items']:
-        if db_news.find_one(id=news_item['id']) is None:
-            newsdata = im.get_article(news_item['id'])
-            storenewsdata = {
-                'id': newsdata['id'],
-                'title': newsdata['title'],
-                'content': newsdata['content'],
-                'date': newsdata['date'],
-            }
-            db_news.insert(storenewsdata)
-            image = None
-            if im.get_newsimage(news_item['id']):
-                image = open('{}.image'.format(news_item['id']), 'rb')
+    db_users = db.create_table(
+        'user',
+        primary_id='username',
+        primary_type=db.types.string
+    )
+    for user in db_users:
+        if user['password'] == '':
+            logger.warning('User %s not enabled', user['username'])
+            continue;
+        ni = NewsInformer(**user)
+        ni.notify_news()
 
-            timestamp = math.floor(dateparser.parse(newsdata['date']).timestamp())
-
-            send_notification(newsdata['content'], newsdata['title'], attachment=image, timestamp=timestamp)
-            if image is not None:
-                image.close()
-
-# init("<token>")
-# Client("<user-key>").send_message("Hello!", title="Hello")
 
 if __name__ == "__main__":
     main()
+
