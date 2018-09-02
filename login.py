@@ -119,16 +119,16 @@ class Infomentor(object):
         )
         with contextlib.suppress(FileNotFoundError):
             self.session.cookies.load(ignore_discard=True, ignore_expires=True)
-        if not self.logged_in():
+        if not self.logged_in(user):
             self._do_login(user, password)
 
-    def logged_in(self):
+    def logged_in(self, username):
         ts = math.floor(time.time())
         url = self._mim_url(
             'authentication/authentication/isauthenticated/?_={}000'.format(ts)
         )
         r = self._do_post(url)
-        self.logger.info('loggedin: %s', r.text)
+        self.logger.info('%s loggedin: %s', username, r.text)
         return r.text == 'true'
 
     def _get_auth_token(self):
