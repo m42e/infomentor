@@ -141,14 +141,16 @@ class Infomentor(object):
         return oauth_token
 
     def _do_post(self, url, **kwargs):
-        self.logger.debug('post to: %s', url)
+        self.logger.info('post to: %s', url)
         self._last_result = self.session.post(url, **kwargs)
+        self.logger.info('result: %d', self._last_result.status_code)
         self.session.cookies.save(ignore_discard=True, ignore_expires=True)
         return self._last_result
 
     def _do_get(self, url, **kwargs):
-        self.logger.debug('get: %s', url)
+        self.logger.info('get: %s', url)
         self._last_result = self.session.get(url, **kwargs)
+        self.logger.info('result: %d', self._last_result.status_code)
         self.session.cookies.save(ignore_discard=True, ignore_expires=True)
         return self._last_result
 
