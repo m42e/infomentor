@@ -16,8 +16,6 @@ pushover.init('***REMOVED***')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)8s - %(message)s',
-    filename='log.txt',
-    filemode='a+'
 )
 logger = logging.getLogger('Infomentor Notifier')
 
@@ -40,8 +38,7 @@ class NewsInformer(object):
         )
         self.db_notification = db.create_table(
             'news_notification',
-            primary_id='theid',
-            primary_type=db.types.integer
+            primary_id=False,
         )
 
     def send_notification(self, news_id, text, title, attachment=None, timestamp=True):
