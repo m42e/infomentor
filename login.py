@@ -16,6 +16,8 @@ pushover.init('***REMOVED***')
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)8s - %(message)s',
+    filename='log.txt',
+    filemode='a+'
 )
 logger = logging.getLogger('Infomentor Notifier')
 
@@ -245,6 +247,7 @@ class Infomentor(object):
         os.makedirs('images', exist_ok=True)
         filename = 'images/{}.image'.format(id)
         if os.path.isfile(filename):
+            self.logger.info('image %s already downloaded', filename)
             return True
         url = self._mim_url('News/NewsImage/GetImage?id={}'.format(id))
         r = self._do_get(url)
