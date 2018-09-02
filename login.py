@@ -13,7 +13,10 @@ import logging
 
 db = dataset.connect('sqlite:///infomentor.db')
 pushover.init('***REMOVED***')
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)8s - %(message)s',
+)
 logger = logging.getLogger('Infomentor Notifier')
 
 
@@ -77,8 +80,9 @@ class NewsInformer(object):
             if not self._notification_sent(news_item['id']):
                 logger.info('Notify %s about %s', self.username, news_item['title'])
                 image = None
-                if im.get_newsimage(news_item['id']):
-                    image = open('{}.image'.format(news_item['id']), 'rb')
+                image_filename = im.get_newsimage(news_item['id'])
+                if image_filename:
+                    image = open(image_filename, 'rb')
 
                 parsed_date = dateparser.parse(storenewsdata['date'])
                 timestamp = math.floor(parsed_date.timestamp())
@@ -108,7 +112,10 @@ class Infomentor(object):
         self._last_result = None
 
     def login(self, user, password):
-        self.session.cookies = http.cookiejar.MozillaCookieJar(filename='{}.cookies'.format(user))
+        os.makedirs('cookiejars', exist_ok=True)
+        self.session.cookies = http.cookiejar.MozillaCookieJar(
+            filename='cookiejars/{}.cookies'.format(user)
+        )
         with contextlib.suppress(FileNotFoundError):
             self.session.cookies.load(ignore_discard=True, ignore_expires=True)
         if not self.logged_in():
@@ -116,7 +123,9 @@ class Infomentor(object):
 
     def logged_in(self):
         ts = math.floor(time.time())
-        url = self._mim_url('authentication/authentication/isauthenticated/?_={}000'.format(ts))
+        url = self._mim_url(
+            'authentication/authentication/isauthenticated/?_={}000'.format(ts)
+        )
         r = self._do_post(url)
         self.logger.info('loggedin: %s', r.text)
         return r.text == 'true'
@@ -234,7 +243,8 @@ class Infomentor(object):
 
     def get_newsimage(self, id):
         self.logger.info('fetching article image: %s', id)
-        filename = '{}.image'.format(id)
+        os.makedirs('images', exist_ok=True)
+        filename = 'images/{}.image'.format(id)
         if os.path.isfile(filename):
             return True
         url = self._mim_url('News/NewsImage/GetImage?id={}'.format(id))
