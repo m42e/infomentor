@@ -43,6 +43,11 @@ class NewsInformer(object):
             'news_notification',
             primary_id=False,
         )
+        self.db_news = db.create_table(
+            'access_status',
+            primary_id='id',
+            primary_type=db.types.integer
+        )
 
     def send_notification(
             self, news_id, text, title, attachment=None, timestamp=True):
@@ -68,15 +73,14 @@ class NewsInformer(object):
         return entry is not None
 
     def notify_news(self):
-        im = Infomentor(logger=logger)
-        im.login(self.username, self.password)
-        im_news = im.get_news()
+        self.im.login(self.username, self.password)
+        im_news = self.im.get_news()
         logger.info('Parsing %d news', im_news['totalItems'])
         for news_item in im_news['items']:
             storenewsdata = self.db_news.find_one(id=news_item['id'])
             if storenewsdata is None:
                 logger.info('NEW article found %s', news_item['title'])
-                newsdata = im.get_article(news_item['id'])
+                newsdata = self.im.get_article(news_item['id'])
                 storenewsdata = {
                     k: newsdata[k] for k in ('id', 'title', 'content', 'date')
                 }
@@ -85,7 +89,7 @@ class NewsInformer(object):
                 logger.info('Notify %s about %s',
                             self.username, news_item['title'])
                 image = None
-                image_filename = im.get_newsimage(news_item['id'])
+                image_filename = self.im.get_newsimage(news_item['id'])
                 if image_filename:
                     image = open(image_filename, 'rb')
 
@@ -125,6 +129,7 @@ class Infomentor(object):
             self.session.cookies.load(ignore_discard=True, ignore_expires=True)
         if not self.logged_in(user):
             self._do_login(user, password)
+        return self.logged_in(user)
 
     def logged_in(self, username):
         ts = math.floor(time.time())
@@ -292,9 +297,23 @@ class Infomentor(object):
         return r.json()
 
 
+def send_status_update(client, info):
+    pushover.Client(client).send_message(
+        info,
+        title='Statusinfo',
+        html=False,
+        timestamp=True
+    )
+
+
 def main():
     db_users = db.create_table(
         'user',
+        primary_id='username',
+        primary_type=db.types.string
+    )
+    db_api_status = db.create_table(
+        'api_status',
         primary_id='username',
         primary_type=db.types.string
     )
@@ -302,8 +321,25 @@ def main():
         if user['password'] == '':
             logger.warning('User %s not enabled', user['username'])
             continue
+        now = datetime.datetime.now()
         ni = NewsInformer(**user)
-        ni.notify_news()
+        statusinfo = {'username': user['username'],
+                      'date': now, 'ok': False, 'info': ''}
+        try:
+            ni.notify_news()
+            statusinfo['ok'] = True
+            statusinfo['info'] = 'Works as expected'
+        except Exception as e:
+            inforstr = 'Exception occured:\n{}:{}\n'.format(type(e).__name__, e)
+            statusinfo['ok'] = False
+            statusinfo['info'] = inforstr
+        finally:
+            previous_status = db_api_status.find_one(username=user)
+            if previous_status is not None:
+                if previous_status['ok'] != statusinfo['ok']:
+                    send_status_update(user['pushover'], statusinfo['info'])
+
+            db_api_status.upsert(statusinfo, ['username'])
 
 
 if __name__ == "__main__":
