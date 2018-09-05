@@ -334,7 +334,7 @@ def main():
             statusinfo['ok'] = False
             statusinfo['info'] = inforstr
         finally:
-            previous_status = db_api_status.find_one(username=user)
+            previous_status = db_api_status.find_one(username=user['username'])
             if previous_status is not None:
                 if previous_status['ok'] != statusinfo['ok']:
                     send_status_update(user['pushover'], statusinfo['info'])
