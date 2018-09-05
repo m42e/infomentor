@@ -73,7 +73,10 @@ class NewsInformer(object):
         return entry is not None
 
     def notify_news(self):
-        self.im.login(self.username, self.password)
+        res = self.im.login(self.username, self.password)
+        if not res:
+            self.logger.error('Login not successfull')
+            raise Exception('Login failed')
         im_news = self.im.get_news()
         logger.info('Parsing %d news', im_news['totalItems'])
         for news_item in im_news['items']:
@@ -127,8 +130,9 @@ class Infomentor(object):
         )
         with contextlib.suppress(FileNotFoundError):
             self.session.cookies.load(ignore_discard=True, ignore_expires=True)
-        if not self.logged_in(user):
-            self._do_login(user, password)
+        if self.logged_in(user):
+            return True
+        self._do_login(user, password)
         return self.logged_in(user)
 
     def logged_in(self, username):
