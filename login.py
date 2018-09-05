@@ -306,7 +306,63 @@ def send_status_update(client, info):
     )
 
 
+class flock(object):
+    filename = '.im.lock'
+
+    def __init__(self):
+        self.pid = os.getpid()
+
+    def aquire(self):
+        if self.is_locked():
+            return False
+        with open(self.filename, 'w+') as f:
+            f.write('{}'.format(self.pid))
+        return True
+
+    def release(self):
+        if self.own_lock():
+            os.unlink(self.filename)
+
+    def __del__(self):
+        self.release()
+
+    def own_lock(self):
+        lockinfo = self._get_lockinfo()
+        return lockinfo == self.pid
+
+    def is_locked(self):
+        lockinfo = self._get_lockinfo()
+        if not lockinfo:
+            return False
+        return self._is_process_active(lockinfo)
+
+    def _is_process_active(self, pid):
+        try:
+            os.kill(pid, 0)
+            return pid != self.pid
+        except Exception as e:
+            return False
+
+    def _get_lockinfo(self):
+        try:
+            lock = {}
+            with open(self.filename, 'r') as f:
+                pid = int(f.read().strip())
+            return pid
+        except Exception as e:
+            return False
+
+
+
+
 def main():
+    logger.info('STARTING-------------------- {}'.format(os.getpid()))
+    lock = flock()
+    if not lock.aquire():
+        logger.info('EXITING - PREVIOUS IS RUNNING')
+        logger.info('ENDING--------------------- {}'.format(os.getpid()))
+        return
+
     db_users = db.create_table(
         'user',
         primary_id='username',
@@ -318,11 +374,12 @@ def main():
         primary_type=db.types.string
     )
     for user in db_users:
+        logger.info('==== USER: {} ====='.format(user['username']))
         if user['password'] == '':
             logger.warning('User %s not enabled', user['username'])
             continue
         now = datetime.datetime.now()
-        ni = NewsInformer(**user)
+        ni = NewsInformer(**user, logger=logger)
         statusinfo = {'username': user['username'],
                       'date': now, 'ok': False, 'info': ''}
         try:
@@ -340,6 +397,7 @@ def main():
                     send_status_update(user['pushover'], statusinfo['info'])
 
             db_api_status.upsert(statusinfo, ['username'])
+    logger.info('ENDING--------------------- {}'.format(os.getpid()))
 
 
 if __name__ == "__main__":
