@@ -253,7 +253,6 @@ class Infomentor(object):
             return False
         if filename is None:
             self.logger.info('determine filename from headers')
-            print(r.headers)
             filename = get_filename_from_cd(r.headers.get('content-disposition'))
             filename = os.path.join(directory, filename)
             self.logger.info('determined filename: %s', filename)
