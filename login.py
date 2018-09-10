@@ -1,6 +1,7 @@
 import requests
 import re
 import os
+import copy
 import dataset
 import pushover
 import http.cookiejar
@@ -10,6 +11,8 @@ import dateparser
 import datetime
 import contextlib
 import logging
+import hashlib
+import urllib.parse
 
 
 db = dataset.connect('sqlite:///infomentor.db')
@@ -26,12 +29,18 @@ logger = logging.getLogger('Infomentor Notifier')
 class NewsInformer(object):
     def __init__(self, username, password, pushover, logger=None):
         if logger is None:
-            logger = logging.getLogger(__name__)
+            self.logger = logging.getLogger(__name__)
+        else:
+            self.logger = logger
         self.username = username
         self.password = password
         self.pushover = pushover
         self._setup_db()
         self.im = Infomentor(logger=logger)
+        res = self.im.login(self.username, self.password)
+        if not res:
+            self.logger.error('Login not successfull')
+            raise Exception('Login failed')
 
     def _setup_db(self):
         self.db_news = db.create_table(
@@ -43,6 +52,24 @@ class NewsInformer(object):
             'news_notification',
             primary_id=False,
         )
+        self.db_news_attachments = db.create_table(
+            'news_attachments',
+            primary_id=False,
+        )
+        self.db_attachments = db.create_table(
+            'attachments',
+            primary_id='id',
+            primary_type=db.types.integer
+        )
+        self.db_timetable = db.create_table(
+            'timetable',
+            primary_id='id',
+            primary_type=db.types.string
+        )
+        self.db_ttnotification = db.create_table(
+            'timetable_notification',
+            primary_id=False,
+        )
         self.db_news = db.create_table(
             'access_status',
             primary_id='id',
@@ -51,7 +78,7 @@ class NewsInformer(object):
 
     def send_notification(
             self, news_id, text, title, attachment=None, timestamp=True):
-        logger.info('sending notification: %s', title)
+        self.logger.info('sending notification: %s', title)
         text = text.replace('<br>', '\n')
         try:
             pushover.Client(self.pushover).send_message(
@@ -72,24 +99,45 @@ class NewsInformer(object):
             id=news_id, username=self.username)
         return entry is not None
 
+    def notify_timetable(self):
+        tt = self.im.get_timetable()
+        changed = []
+        for item in tt:
+            parsed_item = copy.deepcopy(item)
+            start = datetime.datetime.strptime(parsed_item['start'], '%Y-%m-%dT%H:%M:%S')
+            parsed_item['wday'] = start.weekday()
+            key = '{wday}-{startTime}/{endTime}-{title}-{notes[roomInfo]}'.format(**parsed_item)
+            parsed_item['id'] = key
+            entry = self.db_timetable.find_one(id=key)
+            if entry is None:
+                changed.append(parsed_item)
+
+    def appSetup(self):
+        print(self.im.appsetup())
+
+
     def notify_news(self):
-        res = self.im.login(self.username, self.password)
-        if not res:
-            self.logger.error('Login not successfull')
-            raise Exception('Login failed')
         im_news = self.im.get_news()
-        logger.info('Parsing %d news', im_news['totalItems'])
+        self.logger.info('Parsing %d news', im_news['totalItems'])
         for news_item in im_news['items']:
+            self.db_news.delete(id=14370)
             storenewsdata = self.db_news.find_one(id=news_item['id'])
             if storenewsdata is None:
-                logger.info('NEW article found %s', news_item['title'])
+                self.logger.info('NEW article found %s', news_item['title'])
                 newsdata = self.im.get_article(news_item['id'])
                 storenewsdata = {
                     k: newsdata[k] for k in ('id', 'title', 'content', 'date')
                 }
+                for attachment in newsdata['attachments']:
+                    att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
+                    f = self.im.download(attachment['url'], directory='files')
+                    self.db_attachments.insert(
+                        {'id': att_id, 'filename':f}
+                    );
+                    self.db_news_attachments.insert({'att_id': att_id, 'news_id':newsdata['id']})
                 self.db_news.insert(storenewsdata)
             if not self._notification_sent(news_item['id']):
-                logger.info('Notify %s about %s',
+                self.logger.info('Notify %s about %s',
                             self.username, news_item['title'])
                 image = None
                 image_filename = self.im.get_newsimage(news_item['id'])
@@ -107,6 +155,23 @@ class NewsInformer(object):
                 )
                 if image is not None:
                     image.close()
+
+
+def get_filename_from_cd(cd):
+    if not cd:
+        return None
+    fname = re.match('.*(?:filename=(?P<native>.+)|filename\*=(?P<extended>.+))(?:$|;.*)', cd)
+    filename = fname.group('native')
+    if filename is not None and len(filename) != 0:
+        return filename
+    filename = fname.group('extended')
+    if filename is not None and len(filename) != 0:
+        encoding, string = filename.split("''")
+        return urllib.parse.unquote(string, encoding)
+    import uuid
+    filename = str(uuid.uuid4())
+    logger.warning('no filename detected in %s: using random filename %s', cd, filename)
+    return filename
 
 
 class Infomentor(object):
@@ -133,6 +198,7 @@ class Infomentor(object):
         if self.logged_in(user):
             return True
         self._do_login(user, password)
+        self._do_get(self._mim_url())
         return self.logged_in(user)
 
     def logged_in(self, username):
@@ -166,6 +232,43 @@ class Infomentor(object):
         self.logger.info('result: %d', self._last_result.status_code)
         self.session.cookies.save(ignore_discard=True, ignore_expires=True)
         return self._last_result
+
+    def download(self, url, filename=None, directory=None, overwrite=False):
+        self.logger.info('fetching download: %s', url)
+        if filename is not None:
+            self.logger.info('using given filename %s', filename)
+            os.makedirs(os.path.dirname(filename), exist_ok=True)
+            if os.path.isfile(filename) and not overwrite:
+                self.logger.info('file %s already downloaded', filename)
+                return filename
+        elif directory is not None:
+            self.logger.info('to directory %s', directory)
+            os.makedirs(directory, exist_ok=True)
+        else:
+            self.logger.error('fetching download requires filename or folder')
+            return False
+
+        url = self._mim_url(url)
+        r = self._do_get(url)
+        if r.status_code != 200:
+            return False
+        if filename is None:
+            self.logger.info('determine filename from headers')
+            print(r.headers)
+            filename = get_filename_from_cd(r.headers.get('content-disposition'))
+            filename = os.path.join(directory, filename)
+            self.logger.info('determined filename: %s', filename)
+            if os.path.isfile(filename) and not overwrite:
+                self.logger.info('file %s already downloaded', filename)
+                filename, extension = os.path.splitext(filename)
+                now = datetime.datetime.now()
+                timestamp = now.strftime('%Y-%m-%d_%H-%M-%S')
+                filename = '{}_{}{}'.format(filename, timestamp, extension)
+                self.logger.info('using %s as filename', filename)
+
+        with open(filename, 'wb+') as f:
+            f.write(r.content)
+        return filename
 
     def _extract_hidden_fields(self):
         hiddenfields = re.findall('<input type="hidden"(.*?) />',
@@ -257,6 +360,13 @@ class Infomentor(object):
                           data={'id': id})
         return r.json()
 
+
+    def appsetup(self):
+        self.logger.info('appsetup')
+        r = self._do_get(self._mim_url('account/PairedDevices/PairedDevices'))
+        print(r.content)
+        return r.json()
+
     def get_newsimage(self, id):
         self.logger.info('fetching article image: %s', id)
         os.makedirs('images', exist_ok=True)
@@ -287,8 +397,8 @@ class Infomentor(object):
 
     def get_homework(self):
         now = datetime.datetime.now()
-        dayofweek = now.weekday
-        startofweek = now - datetime.timedelta(days=-dayofweek)
+        dayofweek = now.weekday()
+        startofweek = now - datetime.timedelta(days=dayofweek)
         timestamp = startofweek.strftime('%Y-%m-%dT00:00:00.000Z')
         data = {
             'date': timestamp,
@@ -296,6 +406,25 @@ class Infomentor(object):
         }
         r = self._do_post(
             self._mim_url('Homework/homework/GetHomework'),
+            data=data
+        )
+        return r.json()
+
+    def get_timetable(self):
+        now = datetime.datetime.now()
+        dayofweek = now.weekday()
+        startofweek = now - datetime.timedelta(days=dayofweek)
+        endofweek = now + datetime.timedelta(days=(5-dayofweek)+7)
+        start = startofweek.strftime('%Y-%m-%d')
+        end = endofweek.strftime('%Y-%m-%d')
+        data = {
+            'UTCOffset': '-120',
+            'start': start,
+            'end': end
+        }
+        self.logger.info('fetching timetable')
+        r = self._do_post(
+            self._mim_url('timetable/timetable/gettimetablelist'),
             data=data
         )
         return r.json()
@@ -377,7 +506,9 @@ def main():
         primary_id='username',
         primary_type=db.types.string
     )
-    for user in db_users:
+    users = [ u['username'] for u in db_users ]
+    for user in users:
+        user = db_users.find_one(username=user)
         logger.info('==== USER: {} ====='.format(user['username']))
         if user['password'] == '':
             logger.warning('User %s not enabled', user['username'])
@@ -389,6 +520,7 @@ def main():
         try:
             ni.notify_news()
             statusinfo['ok'] = True
+            statusinfo['degraded'] = False
             statusinfo['info'] = 'Works as expected'
         except Exception as e:
             inforstr = 'Exception occured:\n{}:{}\n'.format(type(e).__name__, e)
@@ -398,11 +530,43 @@ def main():
             previous_status = db_api_status.find_one(username=user['username'])
             if previous_status is not None:
                 if previous_status['ok'] != statusinfo['ok']:
-                    send_status_update(user['pushover'], statusinfo['info'])
+                    if previous_status['degraded'] == True:
+                        send_status_update(user['pushover'], statusinfo['info'])
+                    else:
+                        logger.error('Switching to degraded state %s', user['username'])
+                        statusinfo['degraded'] = True
 
             db_api_status.upsert(statusinfo, ['username'])
     logger.info('ENDING--------------------- {}'.format(os.getpid()))
 
+def test():
+    logger.info('STARTING-------------------- {}'.format(os.getpid()))
+    lock = flock()
+    if not lock.aquire():
+        logger.info('EXITING - PREVIOUS IS RUNNING')
+        logger.info('ENDING--------------------- {}'.format(os.getpid()))
+        return
+
+    db_users = db.create_table(
+        'user',
+        primary_id='username',
+        primary_type=db.types.string
+    )
+    db_api_status = db.create_table(
+        'api_status',
+        primary_id='username',
+        primary_type=db.types.string
+    )
+    for user in db_users:
+        logger.info('==== USER: {} ====='.format(user['username']))
+        if user['password'] == '':
+            logger.warning('User %s not enabled', user['username'])
+            continue
+        now = datetime.datetime.now()
+        ni = NewsInformer(**user, logger=logger)
+        #ni.notify_timetable()
+        #ni.notify_news()
+        ni.appSetup()
 
 if __name__ == "__main__":
     main()
