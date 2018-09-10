@@ -130,10 +130,15 @@ class NewsInformer(object):
                 for attachment in newsdata['attachments']:
                     att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
                     f = self.im.download(attachment['url'], directory='files')
-                    self.db_attachments.insert(
-                        {'id': att_id, 'filename':f}
-                    );
-                    self.db_news_attachments.insert({'att_id': att_id, 'news_id':newsdata['id']})
+                    try:
+                        if self.db_attachments.find_one(id=int(att_id)):
+                            continue
+                        self.db_attachments.insert(
+                            {'id': int(att_id), 'filename':f}
+                        );
+                        self.db_news_attachments.insert({'att_id': att_id, 'news_id':newsdata['id']})
+                    except Exception as e:
+                        self.logger.exception('failed to store attachment')
                 self.db_news.insert(storenewsdata)
             if not self._notification_sent(news_item['id']):
                 self.logger.info('Notify %s about %s',
@@ -524,15 +529,17 @@ def main():
             inforstr = 'Exception occured:\n{}:{}\n'.format(type(e).__name__, e)
             statusinfo['ok'] = False
             statusinfo['info'] = inforstr
+            logger.exception("Something went wrong")
         finally:
             previous_status = db_api_status.find_one(username=user['username'])
             if previous_status is not None:
-                if previous_status['ok'] != statusinfo['ok']:
-                    if previous_status['degraded'] == True:
-                        send_status_update(user['pushover'], statusinfo['info'])
-                    else:
-                        logger.error('Switching to degraded state %s', user['username'])
-                        statusinfo['degraded'] = True
+                if previous_status['ok'] == True and statusinfo['ok'] == False:
+                    logger.error('Switching to degraded state %s', user['username'])
+                    statusinfo['degraded'] = True
+                if previous_status['degraded'] == True and statusinfo['ok'] == False:
+                    send_status_update(user['pushover'], statusinfo['info'])
+                if previous_status['degraded'] == True and statusinfo['ok'] == True:
+                    send_status_update(user['pushover'], statusinfo['info'])
 
             db_api_status.upsert(statusinfo, ['username'])
     logger.info('ENDING--------------------- {}'.format(os.getpid()))
