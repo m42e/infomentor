@@ -27,7 +27,7 @@ logger = logging.getLogger('Infomentor Notifier')
 
 
 class NewsInformer(object):
-    def __init__(self, username, password, pushover, logger=None):
+    def __init__(self, username, password, pushover, logger=None, **kwargs):
         if logger is None:
             self.logger = logging.getLogger(__name__)
         else:
@@ -388,7 +388,8 @@ class Infomentor(object):
         import io
         si = io.BytesIO(r.content)
         image = Image.open(si)
-        image = resizeimage.resize_width(image, 800)
+        if image.size[0] > 800:
+            image = resizeimage.resize_width(image, 800)
         image.save(filename, image.format)
         return filename
 
@@ -544,7 +545,7 @@ def main():
                     statusinfo['degraded'] = True
                     statusinfo['degraded_count'] = 1
                 if previous_status['degraded'] == True and statusinfo['ok'] == False:
-                    if statusinfo['degraded_count'] == 1:
+                    if statusinfo['degraded_count'] == 1 and user['wantstatus']:
                         send_status_update(user['pushover'], statusinfo['info'])
                     try:
                         statusinfo['degraded_count'] = previous_status['degraded_count'] + 1
@@ -553,7 +554,8 @@ def main():
                 if previous_status['degraded'] == True and statusinfo['ok'] == True:
                     statusinfo['info'] = 'Works as expected, failed {} times'.format(previous_status['degraded_count'])
                     statusinfo['degraded_count'] = 0
-                    send_status_update(user['pushover'], statusinfo['info'])
+                    if user['wantstatus']:
+                        send_status_update(user['pushover'], statusinfo['info'])
 
             db_api_status.upsert(statusinfo, ['username'])
     logger.info('ENDING--------------------- {}'.format(os.getpid()))
@@ -586,6 +588,20 @@ def test():
         #ni.notify_timetable()
         #ni.notify_news()
         ni.appSetup()
+
+def update_db():
+    db_users = db.create_table(
+        'user',
+        primary_id='username',
+        primary_type=db.types.string
+    )
+    users = [ u['username'] for u in db_users ]
+    for user in users:
+        user = db_users.find_one(username=user)
+        if user['username'] != 'mbilger':
+            user['wantstatus'] = False
+        db_users.update(user, 'username')
+
 
 if __name__ == "__main__":
     main()
