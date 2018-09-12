@@ -25,7 +25,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger('Infomentor Notifier')
 
-
 class NewsInformer(object):
     def __init__(self, username, password, pushover, logger=None, **kwargs):
         if logger is None:
@@ -120,7 +119,8 @@ class NewsInformer(object):
 
     def notify_news(self):
         im_news = self.im.get_news()
-        self.logger.info('Parsing %d news', im_news['totalItems'])
+        idlist = [str(i['id']) for i in im_news['items']]
+        self.logger.info('Parsing %d news (%s)', im_news['totalItems'], ', '.join(idlist))
         for news_item in im_news['items']:
             storenewsdata = self.db_news.find_one(id=news_item['id'])
             if storenewsdata is None:
@@ -151,6 +151,8 @@ class NewsInformer(object):
                     image = open(image_filename, 'rb')
 
                 parsed_date = dateparser.parse(storenewsdata['date'])
+                now = datetime.datetime.now()
+                parsed_date += datetime.timedelta(hours=now.hour, minutes=now.minute)
                 timestamp = math.floor(parsed_date.timestamp())
                 self.send_notification(
                     news_item['id'],
