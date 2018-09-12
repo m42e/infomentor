@@ -81,6 +81,8 @@ class NewsInformer(object):
         self.logger.info('sending notification: %s', title)
         text = text.replace('<br>', '\n')
         try:
+            self.logger.info(text)
+            self.logger.info(title)
             pushover.Client(self.pushover).send_message(
                 text,
                 title=title,
@@ -381,8 +383,13 @@ class Infomentor(object):
         r = self._do_get(url)
         if r.status_code != 200:
             return False
-        with open(filename, 'wb+') as f:
-            f.write(r.content)
+        from PIL import Image
+        from resizeimage import resizeimage
+        import io
+        si = io.BytesIO(r.content)
+        image = Image.open(si)
+        image = resizeimage.resize_width(image, 800)
+        image.save(filename, image.format)
         return filename
 
     def get_calendar(self):
@@ -519,12 +526,11 @@ def main():
         now = datetime.datetime.now()
         ni = NewsInformer(**user, logger=logger)
         statusinfo = {'username': user['username'],
-                      'date': now, 'ok': False, 'info': ''}
+                      'date': now, 'ok': False, 'info': '', 'degraded_count':0}
         try:
             ni.notify_news()
             statusinfo['ok'] = True
             statusinfo['degraded'] = False
-            statusinfo['info'] = 'Works as expected'
         except Exception as e:
             inforstr = 'Exception occured:\n{}:{}\n'.format(type(e).__name__, e)
             statusinfo['ok'] = False
@@ -536,9 +542,17 @@ def main():
                 if previous_status['ok'] == True and statusinfo['ok'] == False:
                     logger.error('Switching to degraded state %s', user['username'])
                     statusinfo['degraded'] = True
+                    statusinfo['degraded_count'] = 1
                 if previous_status['degraded'] == True and statusinfo['ok'] == False:
-                    send_status_update(user['pushover'], statusinfo['info'])
+                    if statusinfo['degraded_count'] == 1:
+                        send_status_update(user['pushover'], statusinfo['info'])
+                    try:
+                        statusinfo['degraded_count'] = previous_status['degraded_count'] + 1
+                    except KeyError as e:
+                        statusinfo['degraded_count'] = 1
                 if previous_status['degraded'] == True and statusinfo['ok'] == True:
+                    statusinfo['info'] = 'Works as expected, failed {} times'.format(previous_status['degraded_count'])
+                    statusinfo['degraded_count'] = 0
                     send_status_update(user['pushover'], statusinfo['info'])
 
             db_api_status.upsert(statusinfo, ['username'])
