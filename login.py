@@ -69,11 +69,6 @@ class NewsInformer(object):
             'timetable_notification',
             primary_id=False,
         )
-        self.db_news = db.create_table(
-            'access_status',
-            primary_id='id',
-            primary_type=db.types.integer
-        )
 
     def send_notification(
             self, news_id, text, title, attachment=None, timestamp=True):
@@ -132,13 +127,10 @@ class NewsInformer(object):
                 for attachment in newsdata['attachments']:
                     self.logger.info('found attachment %s', news_item['title'])
                     att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
-                    f = self.im.download(attachment['url'], directory='files')
+                    f = self.im.download(attachment['url'], directory='files', skip=True)
                     try:
                         _path, urlname = os.path.split(f)
-                        storenewsdata['content'] += '''
-                        <br />
-                        <a href="https://files.hyttioaoa.de/{0}">Attachment {0}</a>
-                        '''.format(urlname)
+                        storenewsdata['content'] += '''Attachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
                         if self.db_attachments.find_one(id=int(att_id)):
                             continue
                         self.db_attachments.insert(
@@ -248,7 +240,7 @@ class Infomentor(object):
         self.session.cookies.save(ignore_discard=True, ignore_expires=True)
         return self._last_result
 
-    def download(self, url, filename=None, directory=None, overwrite=False):
+    def download(self, url, filename=None, directory=None, overwrite=False, skip=False):
         self.logger.info('fetching download: %s', url)
         if filename is not None:
             self.logger.info('using given filename %s', filename)
@@ -272,6 +264,8 @@ class Infomentor(object):
             filename = get_filename_from_cd(r.headers.get('content-disposition'))
             filename = os.path.join(directory, filename)
             self.logger.info('determined filename: %s', filename)
+            if os.path.isfile(filename) and skip:
+                return filename
             if os.path.isfile(filename) and not overwrite:
                 self.logger.info('file %s already downloaded', filename)
                 filename, extension = os.path.splitext(filename)
@@ -598,18 +592,6 @@ def test():
         #ni.notify_news()
         ni.appSetup()
 
-def update_db():
-    db_users = db.create_table(
-        'user',
-        primary_id='username',
-        primary_type=db.types.string
-    )
-    users = [ u['username'] for u in db_users ]
-    for user in users:
-        user = db_users.find_one(username=user)
-        if user['username'] != 'mbilger':
-            user['wantstatus'] = False
-        db_users.update(user, 'username')
 
 
 if __name__ == "__main__":
