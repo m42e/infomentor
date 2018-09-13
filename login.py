@@ -391,6 +391,8 @@ class Infomentor(object):
         import io
         si = io.BytesIO(r.content)
         image = Image.open(si)
+        self.logger.info('image size: %d', image.size[0])
+
         if image.size[0] > 800:
             image = resizeimage.resize_width(image, 800)
         image.save(filename, image.format)
