@@ -130,9 +130,15 @@ class NewsInformer(object):
                     k: newsdata[k] for k in ('id', 'title', 'content', 'date')
                 }
                 for attachment in newsdata['attachments']:
+                    self.logger.info('found attachment %s', news_item['title'])
                     att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
                     f = self.im.download(attachment['url'], directory='files')
                     try:
+                        _path, urlname = os.path.split(f)
+                        storenewsdata['content'] += '''
+                        <br />
+                        <a href="https://files.hyttioaoa.de/{0}">Attachment {0}</a>
+                        '''.format(urlname)
                         if self.db_attachments.find_one(id=int(att_id)):
                             continue
                         self.db_attachments.insert(
@@ -141,6 +147,7 @@ class NewsInformer(object):
                         self.db_news_attachments.insert({'att_id': att_id, 'news_id':newsdata['id']})
                     except Exception as e:
                         self.logger.exception('failed to store attachment')
+                self.logger.info(storenewsdata)
                 self.db_news.insert(storenewsdata)
             if not self._notification_sent(news_item['id']):
                 self.logger.info('Notify %s about %s',
