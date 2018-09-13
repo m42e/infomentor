@@ -116,7 +116,7 @@ class NewsInformer(object):
         im_news = self.im.get_news()
         idlist = [str(i['id']) for i in im_news['items']]
         self.logger.info('Parsing %d news (%s)', im_news['totalItems'], ', '.join(idlist))
-        for news_item in im_news['items']:
+        for news_item in reversed(im_news['items']):
             storenewsdata = self.db_news.find_one(id=news_item['id'])
             if storenewsdata is None:
                 self.logger.info('NEW article found %s', news_item['title'])
