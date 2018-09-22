@@ -125,10 +125,14 @@ class NewsInformer(object):
         print(self.im.appsetup())
 
     def notify_homework(self):
-        homework = self.im.get_homework()
-        self.logger.info('Parsing %d items', len(homework))
+        homework = []
+        homework.extend(self.im.get_homework())
+        homework.extend(self.im.get_homework(1))
+        self.logger.info('Parsing %d homework items', len(homework))
         for datehw in homework:
             for hw in datehw['items']:
+                if hw['id'] == 0:
+                    continue
                 storehw = self.db_homework.find_one(id=hw['id'])
                 if storehw is None:
                     self.logger.info('NEW homework found %s', hw['subject'])
@@ -154,7 +158,7 @@ class NewsInformer(object):
                     self.db_homework.insert(storehw)
 
                 if not self._notification_sent(storehw['id']):
-                    self.logger.info('Notify %s about %s',
+                    self.logger.info('Notify %s about HW %s',
                                 self.username, storehw['subject'])
                     self.send_notification(
                         storehw['id'],
@@ -463,10 +467,11 @@ class Infomentor(object):
         )
         return r.json()
 
-    def get_homework(self):
+    def get_homework(self, offset=0):
         now = datetime.datetime.now()
         dayofweek = now.weekday()
         startofweek = now - datetime.timedelta(days=dayofweek)
+        startofweek -= datetime.timedelta(days=offset*7)
         timestamp = startofweek.strftime('%Y-%m-%dT00:00:00.000Z')
         data = {
             'date': timestamp,
@@ -587,8 +592,7 @@ def main():
                       'date': now, 'ok': False, 'info': '', 'degraded_count':0}
         try:
             ni.notify_news()
-            if user['username'] == 'mbilger':
-                ni.notify_homework()
+            ni.notify_homework()
             statusinfo['ok'] = True
             statusinfo['degraded'] = False
         except Exception as e:
