@@ -51,8 +51,21 @@ class NewsInformer(object):
             'news_notification',
             primary_id=False,
         )
+        self.db_homework = db.create_table(
+            'homework',
+            primary_id='id',
+            primary_type=db.types.integer
+        )
+        self.db_homework_notification = db.create_table(
+            'homework_notification',
+            primary_id=False,
+        )
         self.db_news_attachments = db.create_table(
             'news_attachments',
+            primary_id=False,
+        )
+        self.db_hw_attachments = db.create_table(
+            'homework_attachments',
             primary_id=False,
         )
         self.db_attachments = db.create_table(
@@ -111,6 +124,46 @@ class NewsInformer(object):
     def appSetup(self):
         print(self.im.appsetup())
 
+    def notify_homework(self):
+        homework = self.im.get_homework()
+        self.logger.info('Parsing %d items', len(homework))
+        for datehw in homework:
+            for hw in datehw['items']:
+                storehw = self.db_homework.find_one(id=hw['id'])
+                if storehw is None:
+                    self.logger.info('NEW homework found %s', hw['subject'])
+                    storehw = {
+                        k: hw[k] for k in ('id', 'subject', 'courseElement', 'homeworkText')
+                    }
+                    for attachment in hw['attachments']:
+                        self.logger.info('found attachment %s', attachment['title'])
+                        att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
+                        f = self.im.download(attachment['url'], directory='files', skip=True)
+                        try:
+                            _path, urlname = os.path.split(f)
+                            storehw['homeworkText'] += '''\nAttachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
+                            if self.db_attachments.find_one(id=int(att_id)):
+                                continue
+                            self.db_attachments.insert(
+                                {'id': int(att_id), 'filename':f}
+                            );
+                            self.db_hw_attachments.insert({'att_id': att_id, 'hw_id':hw['id']})
+                        except Exception as e:
+                            self.logger.exception('failed to store attachment')
+                    self.logger.info(storehw)
+                    self.db_homework.insert(storehw)
+
+                if not self._notification_sent(storehw['id']):
+                    self.logger.info('Notify %s about %s',
+                                self.username, storehw['subject'])
+                    self.send_notification(
+                        storehw['id'],
+                        storehw['homeworkText'],
+                        storehw['subject'],
+                        timestamp=True
+                    )
+
+
 
     def notify_news(self):
         im_news = self.im.get_news()
@@ -130,7 +183,7 @@ class NewsInformer(object):
                     f = self.im.download(attachment['url'], directory='files', skip=True)
                     try:
                         _path, urlname = os.path.split(f)
-                        storenewsdata['content'] += '''Attachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
+                        storenewsdata['content'] += '''\nAttachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
                         if self.db_attachments.find_one(id=int(att_id)):
                             continue
                         self.db_attachments.insert(
@@ -372,7 +425,6 @@ class Infomentor(object):
     def appsetup(self):
         self.logger.info('appsetup')
         r = self._do_get(self._mim_url('account/PairedDevices/PairedDevices'))
-        print(r.content)
         return r.json()
 
     def get_newsimage(self, id):
@@ -535,6 +587,8 @@ def main():
                       'date': now, 'ok': False, 'info': '', 'degraded_count':0}
         try:
             ni.notify_news()
+            if user['username'] == 'mbilger':
+                ni.notify_homework()
             statusinfo['ok'] = True
             statusinfo['degraded'] = False
         except Exception as e:
