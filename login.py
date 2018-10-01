@@ -1,6 +1,7 @@
 import requests
 import re
 import os
+import uuid
 import copy
 import dataset
 import pushover
@@ -83,10 +84,20 @@ class NewsInformer(object):
             primary_id=False,
         )
 
+    def make_site(self, text):
+        filename = str(uuid.uuid4())
+        fpath = os.path.join('files', filename+'.html')
+        with open(fpath, 'w+') as f:
+            f.write(text)
+        return 'https://files.hyttioaoa.de/{}'.format(fpath)
+
     def send_notification(
             self, news_id, text, title, attachment=None, timestamp=True):
         self.logger.info('sending notification: %s', title)
         text = text.replace('<br>', '\n')
+        if len(text) > 1000:
+            url = self.make_site(text)
+            text = 'saved at: {}'.format(url)
         try:
             self.logger.info(text)
             self.logger.info(title)
@@ -232,7 +243,6 @@ def get_filename_from_cd(cd):
     if filename is not None and len(filename) != 0:
         encoding, string = filename.split("''")
         return urllib.parse.unquote(string, encoding)
-    import uuid
     filename = str(uuid.uuid4())
     logger.warning('no filename detected in %s: using random filename %s', cd, filename)
     return filename
@@ -312,6 +322,9 @@ class Infomentor(object):
             self.logger.error('fetching download requires filename or folder')
             return False
 
+        subid = str(uuid.uuid4())
+        os.makedirs(os.path.join(directory, subid), exist_ok=True)
+
         url = self._mim_url(url)
         r = self._do_get(url)
         if r.status_code != 200:
@@ -319,17 +332,9 @@ class Infomentor(object):
         if filename is None:
             self.logger.info('determine filename from headers')
             filename = get_filename_from_cd(r.headers.get('content-disposition'))
-            filename = os.path.join(directory, filename)
             self.logger.info('determined filename: %s', filename)
-            if os.path.isfile(filename) and skip:
-                return filename
-            if os.path.isfile(filename) and not overwrite:
-                self.logger.info('file %s already downloaded', filename)
-                filename, extension = os.path.splitext(filename)
-                now = datetime.datetime.now()
-                timestamp = now.strftime('%Y-%m-%d_%H-%M-%S')
-                filename = '{}_{}{}'.format(filename, timestamp, extension)
-                self.logger.info('using %s as filename', filename)
+            filename = os.path.join(directory, subid, filename)
+            self.logger.info('saveas: %s', filename)
 
         with open(filename, 'wb+') as f:
             f.write(r.content)
