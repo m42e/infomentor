@@ -6,7 +6,7 @@ setup(
         url = 'https://github.com/mypackage.git',
         author = 'Matthias Bilger',
         author_email = 'matthias@bilger.info',
-        description = 'grab infomentor news and push them',
+        description = 'grab infomentor news and push or mail them',
         packages = find_packages(),
-        install_requires = ['pycrypt', 'requests'],
+        install_requires = ['pycrypt', 'requests', 'sqlalchemy', 'dateparser', 'python-pushover' ],
 )
