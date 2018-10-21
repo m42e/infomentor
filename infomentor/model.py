@@ -17,6 +17,7 @@ def unpad(s):
     return s[0:-s[-1]].decode('utf8')
 
 class User(ModelBase):
+    '''The infomentor user.'''
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
@@ -55,9 +56,11 @@ class User(ModelBase):
 
 
 class Notification(ModelBase):
+    '''This contains the information about the type of notification and additional the key to reach out to the user'''
     __tablename__ = 'notifications'
 
     class Types(enum.Enum):
+        '''Supported notification types'''
         PUSHOVER = 1
         EMAIL = 2
 
@@ -73,6 +76,7 @@ class Notification(ModelBase):
 
 
 class Attachment(ModelBase):
+    '''General attachment type for homework and news'''
     __tablename__ = 'attachments'
 
     id = Column(Integer, primary_key=True)
@@ -89,6 +93,7 @@ class Attachment(ModelBase):
 
 
 class News(ModelBase):
+    '''A News entry'''
     __tablename__ = 'news'
 
     id = Column(Integer, primary_key=True)
@@ -110,6 +115,7 @@ class News(ModelBase):
             self.id, self.title)
 
 class Homework(ModelBase):
+    '''A homework entry'''
     __tablename__ = 'homework'
 
     id = Column(Integer, primary_key=True)
@@ -124,6 +130,7 @@ class Homework(ModelBase):
     user = relationship("User", back_populates="homeworks")
 
 class ApiStatus(ModelBase):
+    '''Representing the result of the last trys to access the api, represented as one status'''
     __tablename__ = 'api_status'
 
     id = Column(Integer, primary_key=True)

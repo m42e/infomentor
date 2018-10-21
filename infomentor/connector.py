@@ -13,6 +13,7 @@ import uuid
 from infomentor import model
 
 class InfomentorFile(object):
+    '''Represent a file which is downloaded'''
     def __init__(self, directory, filename):
         if directory is None:
             raise Exception('directory is required')

@@ -10,12 +10,16 @@ import pushover
 pushover.init('***REMOVED***')
 
 class Informer(object):
+    '''The Logic part of the infomentor notifier.
+    
+    This class offers the methods required to notify a user of new News and Homework items posted on infomentor.'''
     def __init__(self, user, im, logger):
         self.logger = logger or logging.getLogger(__name__)
         self.user = user
         self.im = im
 
     def send_status_update(self, text):
+       '''In case something unexpected happends and the user has activated the feature to get notified about it, this will send out the information'''
         try:
             if self.user.notification.ntype == model.Notification.Types.PUSHOVER:
                 pushover.Client(self.user.notification.info).send_message(
