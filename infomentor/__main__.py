@@ -34,7 +34,7 @@ def parse_args(arglist):
 
 def add_user(username):
     session = db.get_db()
-    existing_user = session.query(model.User.name == username).one_or_none()
+    existing_user = session.query(model.User).filter(model.User.name == username).one_or_none()
     if existing_user is not None:
         print('user exists, change pw')
     else:
