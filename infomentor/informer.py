@@ -147,7 +147,7 @@ class Informer(object):
             self.logger.info(hw.subject)
             pushover.Client(self.user.notification.info).send_message(
                 text,
-                title=hw.title,
+                title=f"Homework: {hw.subject}",
                 html=True,
             )
         except pushover.RequestError as e:
