@@ -137,7 +137,6 @@ class Informer(object):
         for attachment in hw.attachments:
             fid, fname = attachment.localpath.split('/')
             text += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1}<br>'''.format(fname, attachment.localpath)
-        parsed_date = dateparser.parse(hw.date)
         if len(text) > 900:
             url = self._make_site(text)
             shorttext = text[:900]
