@@ -87,17 +87,21 @@ class NewsInformer(object):
     def make_site(self, text):
         filename = str(uuid.uuid4())
         fpath = os.path.join('files', filename+'.html')
+        urlfinder = re.compile("(https?://[^ \n\t]*)")
+        text = urlfinder.sub(r'<a href="\1">\1</a>', text)
+        text = '<html> <head> <meta charset="utf-8" /> </head> <body>{}</body></html>'.format(text)
         with open(fpath, 'w+') as f:
             f.write(text)
-        return 'https://files.hyttioaoa.de/{}'.format(fpath)
+        return 'https://files.hyttioaoa.de/{}.html'.format(filename)
 
     def send_notification(
             self, news_id, text, title, attachment=None, timestamp=True):
         self.logger.info('sending notification: %s', title)
-        text = text.replace('<br>', '\n')
-        if len(text) > 1000:
+        if len(text) > 900:
             url = self.make_site(text)
-            text = 'saved at: {}'.format(url)
+            shorttext = text[:900]
+            text = '{}...\n\nfulltext saved at: {}'.format(shorttext, url)
+        text = text.replace('<br>', '\n')
         try:
             self.logger.info(text)
             self.logger.info(title)
@@ -155,8 +159,8 @@ class NewsInformer(object):
                         att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
                         f = self.im.download(attachment['url'], directory='files', skip=True)
                         try:
-                            _path, urlname = os.path.split(f)
-                            storehw['homeworkText'] += '''\nAttachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
+                            fid, fname = f.split('/')
+                            storehw['homeworkText'] += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1}<br>'''.format(fname, f)
                             if self.db_attachments.find_one(id=int(att_id)):
                                 continue
                             self.db_attachments.insert(
@@ -197,8 +201,7 @@ class NewsInformer(object):
                     att_id = re.findall('Download/([0-9]+)?', attachment['url'])[0]
                     f = self.im.download(attachment['url'], directory='files', skip=True)
                     try:
-                        _path, urlname = os.path.split(f)
-                        storenewsdata['content'] += '''\nAttachment {0}: https://files.hyttioaoa.de/{0}\n'''.format(urlname)
+                        storenewsdata['content'] += '''<br>Attachment {0}: https://files.hyttioaoa.de/{0}<br>'''.format(f)
                         if self.db_attachments.find_one(id=int(att_id)):
                             continue
                         self.db_attachments.insert(
@@ -333,10 +336,11 @@ class Infomentor(object):
             self.logger.info('determine filename from headers')
             filename = get_filename_from_cd(r.headers.get('content-disposition'))
             self.logger.info('determined filename: %s', filename)
-            filename = os.path.join(directory, subid, filename)
-            self.logger.info('saveas: %s', filename)
+            filename = os.path.join(subid, filename)
+            filepath = os.path.join(directory, filename)
+            self.logger.info('saveas: %s', filepath)
 
-        with open(filename, 'wb+') as f:
+        with open(filepath, 'wb+') as f:
             f.write(r.content)
         return filename
 
