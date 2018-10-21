@@ -107,7 +107,7 @@ def notify_users():
                 statusinfo['degraded_count'] = 1
             if user.apistatus.ok == False and statusinfo['ok'] == False:
                 if user.apistatus.degraded_count == 1 and user.wantstatus:
-                    send_status_update(user, statusinfo['info'])
+                    im.send_status_update(statusinfo['info'])
                 try:
                     statusinfo['degraded_count'] = user.apistatus['degraded_count'] + 1
                 except Exception as e:
@@ -116,13 +116,11 @@ def notify_users():
                 statusinfo['info'] = 'Works as expected, failed {} times'.format(user.apistatus.degraded_count)
                 statusinfo['degraded_count'] = 0
                 if user.wantstatus:
-                    send_status_update(user, statusinfo['info'])
+                    im.send_status_update(statusinfo['info'])
             user.apistatus.updateobj(statusinfo)
         logger.info('New API status: %s', user.apistatus)
         session.commit()
 
-def send_status_update(user, text):
-    pass
 
 def main():
     args = parse_args(sys.argv[1:])

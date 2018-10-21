@@ -15,6 +15,27 @@ class Informer(object):
         self.user = user
         self.im = im
 
+    def send_status_update(self, text):
+        try:
+            if self.user.notification.ntype == model.Notification.Types.PUSHOVER:
+                pushover.Client(self.user.notification.info).send_message(
+                    text,
+                    title='Status Infomentor',
+                    html=False,
+                )
+            elif self.user.notification.ntype == model.Notification.Types.EMAIL:
+                mail = MIMEText(text)
+                mail['Subject'] = f'Status Infomentor'
+                mail['From'] = 'infomentor@09a.de'
+                mail['To'] = self.user.notification.info
+                self._send_mail(mail)
+        except:
+            mail = MIMEText("Fehler bei Infomentor")
+            mail['Subject'] = f'Fehler bei infomentor'
+            mail['From'] = 'infomentor@09a.de'
+            mail['To'] = 'matthias@bilger.info'
+            self._send_mail(mail)
+
     def update_news(self):
         session = db.get_db()
         newslist = self.im.get_news_list()
@@ -107,10 +128,7 @@ class Informer(object):
                 encoders.encode_base64(msg)
             msg.add_header('Content-Disposition', 'attachment', filename=fname)
             outer.attach(msg)
-        s = smtplib.SMTP_SSL('09a.de')
-        s.login('infomentor@09a.de', '***REMOVED***')
-        s.send_message(outer)
-        s.quit()
+        self._send_mail(outer)
 
     def update_homework(self):
         session = db.get_db()
@@ -181,7 +199,10 @@ class Informer(object):
                 encoders.encode_base64(msg)
             msg.add_header('Content-Disposition', 'attachment', filename=fname)
             outer.attach(msg)
+        self._send_mail(outer)
+
+    def _send_mail(self, mail):
         s = smtplib.SMTP_SSL('09a.de')
         s.login('infomentor@09a.de', '***REMOVED***')
-        s.send_message(outer)
+        s.send_message(mail)
         s.quit()
