@@ -60,7 +60,7 @@ class Informer(object):
         text = news.content
         for attachment in news.attachments:
             fid, fname = attachment.localpath.split('/')
-            text += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1}<br>'''.format(fname, attachment.localpath)
+            text += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1} <br>'''.format(fname, attachment.localpath)
         parsed_date = dateparser.parse(news.date)
         now = datetime.datetime.now()
         parsed_date += datetime.timedelta(hours=now.hour, minutes=now.minute)
