@@ -9,11 +9,12 @@ from infomentor import db, model, connector, informer
 
 logformat='{asctime} - {name:25s} - {levelname:8s} - {message}'
 def logtofile():
+    from logging.handlers import RotatingFileHandler
+    handler = RotatingFileHandler('log.txt', maxBytes=10240, backupCount=5)
     logging.basicConfig(
         level=logging.INFO,
         format=logformat,
-        filename='log.txt',
-        filemode='a+',
+        handlers=[handler],
         style='{'
     )
 def logtoconsole():

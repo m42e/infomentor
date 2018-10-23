@@ -168,7 +168,7 @@ class Infomentor(object):
         '''Post request for session'''
         self.logger.info('post to: %s', url)
         if 'data' in kwargs:
-            self.logger.info('data: %s', json.dumps(kwargs['data'], indent=2))
+            self.logger.info('data: %s', json.dumps(kwargs['data']))
         self._last_result = self.session.post(url, **kwargs)
         self.logger.info('result: %d', self._last_result.status_code)
         self._save_cookies()
