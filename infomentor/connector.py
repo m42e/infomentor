@@ -294,7 +294,7 @@ class Infomentor(object):
     def get_newsimage(self, id):
         self.logger.info('fetching article image: %s', id)
         filename = '{}.image'.format(id)
-        url = self._mim_url('News/NewsImage/GetImage?id={}'.format(id))
+        url = 'News/NewsImage/GetImage?id={}'.format(id)
         return self.download_file(url, directory='images', filename=filename)
 
     def get_calendar(self, offset=0, weeks=1):
