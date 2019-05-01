@@ -5,10 +5,13 @@ from Crypto.Cipher import AES
 import base64
 import enum
 import hashlib
+from infomentor import config
+
+cfg = config.load()
 
 ModelBase = declarative_base()
 
-_PASSWORD_SECRET_KEY = '***REMOVED***'
+_PASSWORD_SECRET_KEY = cfg['general']['secretkey']
 BS = 16
 def pad(s):
     diff = BS - len(s) % BS

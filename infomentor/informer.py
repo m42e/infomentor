@@ -1,4 +1,4 @@
-from infomentor import model, db, icloudcalendar
+from infomentor import model, db, icloudcalendar, config
 import logging
 import uuid
 import os
@@ -8,7 +8,8 @@ import datetime
 import math
 import pushover
 from icalendar import Event, vDate, Calendar
-pushover.init('***REMOVED***')
+cfg = config.load()
+pushover.init(cfg['pushover']['apikey'] )
 
 class Informer(object):
     '''The Logic part of the infomentor notifier.
