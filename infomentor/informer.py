@@ -228,7 +228,7 @@ class Informer(object):
         cal = icx.get_named_calendar(cname)
         if not cal:
             cal = icx.create_calendar(cname)
-        calentries = self.im.get_calendar(weeks=4)
+        calentries = self.im.get_calendar()
         known_entries = {}
         for calevent in cal.events():
             if calevent.data is None:
@@ -238,6 +238,7 @@ class Informer(object):
 
         for entry in calentries:
             self.logger.debug(entry)
+            uid = 'infomentor_{}'.format(entry['id'])
             event_details = self.im.get_event(entry['id'])
             self.logger.debug(event_details)
             calend = Calendar()
@@ -247,7 +248,12 @@ class Informer(object):
             event.add('description', event_details['notes'])
             event.add('dtstart', dateparser.parse(entry['start']))
             event.add('dtend', dateparser.parse(entry['end']))
-            self.logger.debug(event.to_ical())
             calend.add_component(event)
+            new_cal_entry = calend.to_ical().decode('utf-8').replace('\r','')
+            if uid in known_entries:
+                if known_entries[uid].data == new_cal_entry:
+                    self.logger.info('no change for calendar entry {}'.format(uid))
+                    continue
+            self.logger.debug(calend.to_ical())
             cal.add_event(calend.to_ical())
 

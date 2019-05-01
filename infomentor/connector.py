@@ -298,9 +298,8 @@ class Infomentor(object):
         url = 'News/NewsImage/GetImage?id={}'.format(id)
         return self.download_file(url, directory='images', filename=filename)
 
-    def get_calendar(self, offset=0, weeks=1):
+    def get_calendar(self):
         self.logger.info('fetching calendar')
-        data = self._get_week_dates(offset=offset, weeks=weeks)
         data = {
             'UTCOffset': utcoffset,
         }
