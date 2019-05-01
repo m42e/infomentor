@@ -304,8 +304,8 @@ class Infomentor(object):
         data = {
             'UTCOffset': utcoffset,
         }
-        schoolyear = int(startofweek.strftime('%Y'))
-        if int(startofweek.strftime('%m')) <= 7:
+        schoolyear = int(datetime.datetime.now().strftime('%Y'))
+        if int(datetime.datetime.now().strftime('%m')) <= 7:
             schoolyear -= 1
         data['start'] = '{}-08-01'.format(schoolyear)
         data['end'] = '{}-07-31'.format(schoolyear+1)
