@@ -25,6 +25,7 @@ class User(ModelBase):
     enc_password = Column(String)
     notification = relationship("Notification", back_populates="user", uselist=False)
     apistatus = relationship("ApiStatus", back_populates="user", uselist=False)
+    icalendar = relationship("ICloudCalendar", back_populates="user", uselist=False)
     wantstatus = Column(Boolean)
     homeworks = relationship("Homework",  back_populates="user")
     news = relationship("News",back_populates="user")
@@ -63,6 +64,7 @@ class Notification(ModelBase):
         '''Supported notification types'''
         PUSHOVER = 1
         EMAIL = 2
+        FAKE = 3
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -148,4 +150,40 @@ class ApiStatus(ModelBase):
     def __repr__(self):
         return "<ApiStatus(ok='%s', NOKs='%d', info='%s')>" % (
             self.ok, self.degraded_count, self.info)
+
+class ICloudCalendar(ModelBase):
+    '''An icloud account with a calendar name'''
+    __tablename__ = 'icloud_calendar'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    icloud_user = Column(String)
+    icloud_pwd = Column(String)
+    calendarname = Column(String)
+    user = relationship("User", back_populates="icalendar", uselist=False)
+
+    def __init__(self, *args, **kwargs):
+        self._setup_cipher()
+        super().__init__(*args, **kwargs)
+
+    def _setup_cipher(self):
+        if not hasattr(self, 'cipher'):
+            aeskey = hashlib.sha256(_PASSWORD_SECRET_KEY.encode()).digest()
+            self.cipher = AES.new(aeskey,AES.MODE_ECB)
+
+    @property
+    def password(self):
+        self._setup_cipher()
+        decoded = self.cipher.decrypt(base64.b64decode(self.icloud_pwd))
+        return unpad(decoded)
+
+    @password.setter
+    def password(self, value):
+        self._setup_cipher()
+        encoded = base64.b64encode(self.cipher.encrypt(pad(value)))
+        self.icloud_pwd = encoded
+
+    def __repr__(self):
+        return "<ICloudCalendar(user='%s' cal='%s')>" % (
+            self.icloud_user, self.calendarname)
 

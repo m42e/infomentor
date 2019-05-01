@@ -27,8 +27,11 @@ def parse_args(arglist):
     parser = argparse.ArgumentParser(description='Infomentor Grabber and Notifier')
     parser.add_argument('--nolog', action='store_true', help='print log instead of logging to file')
     parser.add_argument('--adduser', type=str, help='add user')
+    parser.add_argument('--addfake', type=str, help='add fake')
     parser.add_argument('--addpushover', type=str, help='add pushover')
     parser.add_argument('--addmail', type=str, help='add mail')
+    parser.add_argument('--addcalendar', type=str, help='add icloud calendar')
+    parser.add_argument('--test', action='store_true', help='test')
     args = parser.parse_args(arglist)
     return args
 
@@ -60,6 +63,32 @@ def add_pushover(username):
         print(f'Adding PUSHOVER for user: {username}')
     id = input('PUSHOVER ID: ')
     user.notification = model.Notification(ntype=model.Notification.Types.PUSHOVER, info=id)
+    session.commit()
+
+def add_fake(username):
+    session = db.get_db()
+    user = session.query(model.User).filter(model.User.name == username).one_or_none()
+    if user is None:
+        print('user does not exist')
+        return
+    else:
+        print(f'Adding FAKE for user: {username}')
+    user.notification = model.Notification(ntype=model.Notification.Types.FAKE, info='')
+    session.commit()
+
+def add_calendar(username):
+    session = db.get_db()
+    user = session.query(model.User).filter(model.User.name == username).one_or_none()
+    if user is None:
+        print('user does not exist')
+        return
+    else:
+        print(f'Adding icloud calendar for user: {username}')
+    id = input('Apple ID: ')
+    import getpass
+    password = getpass.getpass(prompt='iCloud Password: ')
+    calendar = input('Calendar: ')
+    user.icalendar = model.ICloudCalendar(icloud_user=id, password=password, calendarname=calendar)
     session.commit()
 
 def add_mail(username):
@@ -94,6 +123,7 @@ def notify_users():
             i = informer.Informer(user, im, logger=logger)
             i.update_news()
             i.update_homework()
+            i.update_calendar()
             statusinfo['ok'] = True
             statusinfo['degraded'] = False
         except Exception as e:
@@ -124,6 +154,8 @@ def notify_users():
 
 def main():
     args = parse_args(sys.argv[1:])
+    if args.test:
+        return
     if args.nolog:
         logtoconsole()
     else:
@@ -135,10 +167,14 @@ def main():
         if not lock.aquire():
             logger.info('EXITING - PREVIOUS IS RUNNING')
             raise Exception()
-        if args.adduser:
+        if args.addfake:
+            add_fake(args.addfake)
+        elif args.adduser:
             add_user(args.adduser)
         elif args.addpushover:
             add_pushover(args.addpushover)
+        elif args.addcalendar:
+            add_calendar(args.addcalendar)
         else:
             notify_users()
     except Exception as e:

@@ -307,6 +307,15 @@ class Infomentor(object):
         )
         return self.get_json_return()
 
+    def get_event(self, eventid):
+        self.logger.info('fetching calendar entry')
+        data = {'id': eventid}
+        self._do_post(
+            self._mim_url('Calendar/Calendar/getEntry'),
+            data=data
+        )
+        return self.get_json_return()
+
     def get_homework(self, offset=0):
         self.logger.info('fetching homework')
         startofweek = self._get_start_of_week(offset)
@@ -376,7 +385,7 @@ class Infomentor(object):
     def _get_week_dates(self, offset=0, weeks=1):
         weekoffset = datetime.timedelta(days=7*offset)
 
-        startofweek = self._get_start_of_weekdays()
+        startofweek = self._get_start_of_week()
         endofweek = startofweek + datetime.timedelta(days=5+7*(weeks-1))
 
         startofweek += weekoffset
@@ -384,7 +393,7 @@ class Infomentor(object):
 
         now = datetime.datetime.now()
         utctime = datetime.datetime.utcnow()
-        utcoffset = (now.tm_hour - utctime.tm_hour)*60
+        utcoffset = (now.hour - utctime.hour)*60
 
         data = {
             'UTCOffset': utcoffset,

@@ -8,5 +8,5 @@ setup(
         author_email = 'matthias@bilger.info',
         description = 'grab infomentor news and push or mail them',
         packages = find_packages(),
-        install_requires = ['pycrypto', 'request', 'sqlalchemy', 'dateparser', 'python-pushover' ],
+        install_requires = ['pycrypto', 'request', 'sqlalchemy', 'dateparser', 'python-pushover', 'caldav', 'bs4', 'icalendar' ],
 )

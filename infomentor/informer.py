@@ -1,4 +1,4 @@
-from infomentor import model, db
+from infomentor import model, db, icloudcalendar
 import logging
 import uuid
 import os
@@ -7,6 +7,7 @@ import dateparser
 import datetime
 import math
 import pushover
+from icalendar import Event, vDate, Calendar
 pushover.init('***REMOVED***')
 
 class Informer(object):
@@ -19,7 +20,7 @@ class Informer(object):
         self.im = im
 
     def send_status_update(self, text):
-       '''In case something unexpected happends and the user has activated the feature to get notified about it, this will send out the information'''
+        '''In case something unexpected happends and the user has activated the feature to get notified about it, this will send out the information'''
         try:
             if self.user.notification.ntype == model.Notification.Types.PUSHOVER:
                 pushover.Client(self.user.notification.info).send_message(
@@ -56,6 +57,9 @@ class Informer(object):
             self._notify_news_pushover(news)
         elif self.user.notification.ntype == model.Notification.Types.EMAIL:
             self._notify_news_mail(news)
+        elif self.user.notification.ntype == model.Notification.Types.FAKE:
+            with open('{}.txt'.format(self.user.name), 'a+') as f:
+                f.write('Notification:\n---------8<-------\n{}\n---------8<-------\n\n'.format(news.content))
         else:
             raise Exception('invalid notification')
         pass
@@ -150,6 +154,9 @@ class Informer(object):
             self._notify_hw_pushover(hw)
         elif self.user.notification.ntype == model.Notification.Types.EMAIL:
             self._notify_hw_mail(hw)
+        elif self.user.notification.ntype == model.Notification.Types.FAKE:
+            with open('{}.txt'.format(self.user.name), 'a+') as f:
+                f.write('Notification:\n---------8<-------\n{}\n---------8<-------\n\n'.format(hw.text))
         else:
             raise Exception('invalid notification')
         pass
@@ -210,3 +217,37 @@ class Informer(object):
         s.login('infomentor@09a.de', '***REMOVED***')
         s.send_message(mail)
         s.quit()
+
+    def update_calendar(self):
+        session = db.get_db()
+        print(self.user.icalendar)
+        if self.user.icalendar is None:
+            return
+        icx = icloudcalendar.iCloudConnector(self.user.icalendar.icloud_user, self.user.icalendar.password)
+        cname = self.user.icalendar.calendarname
+        cal = icx.get_named_calendar(cname)
+        if not cal:
+            cal = icx.create_calendar(cname)
+        calentries = self.im.get_calendar(weeks=4)
+        known_entries = {}
+        for calevent in cal.events():
+            if calevent.data is None:
+                continue
+            uid = re.findall('UID:(.*)', calevent.data)[0]
+            known_entries[uid] = calevent
+
+        for entry in calentries:
+            self.logger.debug(entry)
+            event_details = self.im.get_event(entry['id'])
+            self.logger.debug(event_details)
+            calend = Calendar()
+            event = Event()
+            event.add('uid', 'infomentor_{}'.format(entry['id']))
+            event.add('summary', entry['title'])
+            event.add('description', event_details['notes'])
+            event.add('dtstart', vDate(dateparser.parse(entry['start'])))
+            event.add('dtend', vDate(dateparser.parse(entry['end'])))
+            self.logger.debug(event.to_ical())
+            calend.add_component(event)
+            cal.add_event(calend.to_ical())
+
