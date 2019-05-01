@@ -298,8 +298,9 @@ class Infomentor(object):
         url = 'News/NewsImage/GetImage?id={}'.format(id)
         return self.download_file(url, directory='images', filename=filename)
 
-    def get_calendar(self):
+    def get_calendar(self, offset=0, weeks=1):
         self.logger.info('fetching calendar')
+        utcoffset = self._get_utc_offset()
         data = {
             'UTCOffset': utcoffset,
         }
@@ -398,9 +399,7 @@ class Infomentor(object):
         startofweek += weekoffset
         endofweek += weekoffset
 
-        now = datetime.datetime.now()
-        utctime = datetime.datetime.utcnow()
-        utcoffset = (now.hour - utctime.hour)*60
+        utcoffset = self._get_utc_offset()
 
         data = {
             'UTCOffset': utcoffset,
@@ -408,6 +407,11 @@ class Infomentor(object):
             'end': endofweek.strftime('%Y-%m-%d'),
         }
         return data
+
+    def _get_utc_offset(self):
+        now = datetime.datetime.now()
+        utctime = datetime.datetime.utcnow()
+        return (now.hour - utctime.hour)*60
 
     def _get_start_of_week(self, offset=0):
         now = datetime.datetime.now()
