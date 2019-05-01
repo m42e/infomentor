@@ -301,6 +301,14 @@ class Infomentor(object):
     def get_calendar(self, offset=0, weeks=1):
         self.logger.info('fetching calendar')
         data = self._get_week_dates(offset=offset, weeks=weeks)
+        data = {
+            'UTCOffset': utcoffset,
+        }
+        schoolyear = int(startofweek.strftime('%Y'))
+        if int(startofweek.strftime('%m')) <= 7:
+            schoolyear -= 1
+        data['start'] = '{}-08-01'.format(schoolyear)
+        data['end'] = '{}-07-31'.format(schoolyear+1)
         self._do_post(
             self._mim_url('Calendar/Calendar/getEntries'),
             data=data
