@@ -17,6 +17,7 @@ def unpad(s):
     return s[0:-s[-1]].decode('utf8')
 
 class User(ModelBase):
+    '''The infomentor user.'''
     __tablename__ = 'users'
 
     id = Column(Integer, primary_key=True)
@@ -24,6 +25,7 @@ class User(ModelBase):
     enc_password = Column(String)
     notification = relationship("Notification", back_populates="user", uselist=False)
     apistatus = relationship("ApiStatus", back_populates="user", uselist=False)
+    icalendar = relationship("ICloudCalendar", back_populates="user", uselist=False)
     wantstatus = Column(Boolean)
     homeworks = relationship("Homework",  back_populates="user")
     news = relationship("News",back_populates="user")
@@ -55,11 +57,14 @@ class User(ModelBase):
 
 
 class Notification(ModelBase):
+    '''This contains the information about the type of notification and additional the key to reach out to the user'''
     __tablename__ = 'notifications'
 
     class Types(enum.Enum):
+        '''Supported notification types'''
         PUSHOVER = 1
         EMAIL = 2
+        FAKE = 3
 
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('users.id'))
@@ -73,6 +78,7 @@ class Notification(ModelBase):
 
 
 class Attachment(ModelBase):
+    '''General attachment type for homework and news'''
     __tablename__ = 'attachments'
 
     id = Column(Integer, primary_key=True)
@@ -89,6 +95,7 @@ class Attachment(ModelBase):
 
 
 class News(ModelBase):
+    '''A News entry'''
     __tablename__ = 'news'
 
     id = Column(Integer, primary_key=True)
@@ -110,6 +117,7 @@ class News(ModelBase):
             self.id, self.title)
 
 class Homework(ModelBase):
+    '''A homework entry'''
     __tablename__ = 'homework'
 
     id = Column(Integer, primary_key=True)
@@ -124,6 +132,7 @@ class Homework(ModelBase):
     user = relationship("User", back_populates="homeworks")
 
 class ApiStatus(ModelBase):
+    '''Representing the result of the last trys to access the api, represented as one status'''
     __tablename__ = 'api_status'
 
     id = Column(Integer, primary_key=True)
@@ -141,4 +150,40 @@ class ApiStatus(ModelBase):
     def __repr__(self):
         return "<ApiStatus(ok='%s', NOKs='%d', info='%s')>" % (
             self.ok, self.degraded_count, self.info)
+
+class ICloudCalendar(ModelBase):
+    '''An icloud account with a calendar name'''
+    __tablename__ = 'icloud_calendar'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    icloud_user = Column(String)
+    icloud_pwd = Column(String)
+    calendarname = Column(String)
+    user = relationship("User", back_populates="icalendar", uselist=False)
+
+    def __init__(self, *args, **kwargs):
+        self._setup_cipher()
+        super().__init__(*args, **kwargs)
+
+    def _setup_cipher(self):
+        if not hasattr(self, 'cipher'):
+            aeskey = hashlib.sha256(_PASSWORD_SECRET_KEY.encode()).digest()
+            self.cipher = AES.new(aeskey,AES.MODE_ECB)
+
+    @property
+    def password(self):
+        self._setup_cipher()
+        decoded = self.cipher.decrypt(base64.b64decode(self.icloud_pwd))
+        return unpad(decoded)
+
+    @password.setter
+    def password(self, value):
+        self._setup_cipher()
+        encoded = base64.b64encode(self.cipher.encrypt(pad(value)))
+        self.icloud_pwd = encoded
+
+    def __repr__(self):
+        return "<ICloudCalendar(user='%s' cal='%s')>" % (
+            self.icloud_user, self.calendarname)
 
