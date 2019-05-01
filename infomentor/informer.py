@@ -214,8 +214,8 @@ class Informer(object):
         self._send_mail(outer)
 
     def _send_mail(self, mail):
-        s = smtplib.SMTP_SSL('09a.de')
-        s.login('infomentor@09a.de', '***REMOVED***')
+        s = smtplib.SMTP_SSL(cfg['smtp']['server'])
+        s.login(cfg['smtp']['username'], cfg['smtp']['password'])
         s.send_message(mail)
         s.quit()
 

@@ -3,3 +3,8 @@ sqlalchemy
 dateparser
 python-pushover
 pycrypto
+bs4
+flask
+flask-bootstrap
+caldav
+icalendar

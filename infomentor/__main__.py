@@ -174,6 +174,8 @@ def main():
             add_user(args.adduser)
         elif args.addpushover:
             add_pushover(args.addpushover)
+        elif args.addmail:
+            add_mail(args.addmail)
         elif args.addcalendar:
             add_calendar(args.addcalendar)
         else:
