@@ -247,8 +247,13 @@ class Informer(object):
             event.add('uid', 'infomentor_{}'.format(entry['id']))
             event.add('summary', entry['title'])
             event.add('description', event_details['notes'])
-            event.add('dtstart', dateparser.parse(entry['start']))
-            event.add('dtend', dateparser.parse(entry['end']))
+            if not event_details['allDayEvent']:
+                event.add('dtstart', dateparser.parse(entry['start']))
+                event.add('dtend', dateparser.parse(entry['end']))
+            else:
+                event.add('dtstart', dateparser.parse(entry['start']).date())
+                event.add('dtend', dateparser.parse(entry['end']).date())
+
             calend.add_component(event)
             new_cal_entry = calend.to_ical().decode('utf-8').replace('\r','')
             if uid in known_entries:
