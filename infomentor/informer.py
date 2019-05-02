@@ -69,7 +69,7 @@ class Informer(object):
         text = news.content
         for attachment in news.attachments:
             fid, fname = attachment.localpath.split('/')
-            text += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1} <br>'''.format(fname, attachment.localpath)
+            text += '''<br>Attachment {0}: {2}/{1} <br>'''.format(fname, attachment.localpath, cfg['general']['baseurl'])
         parsed_date = dateparser.parse(news.date)
         now = datetime.datetime.now()
         parsed_date += datetime.timedelta(hours=now.hour, minutes=now.minute)
@@ -107,7 +107,7 @@ class Informer(object):
         text = '<html> <head> <meta charset="utf-8" /> </head> <body>{}</body></html>'.format(text)
         with open(fpath, 'w+') as f:
             f.write(text)
-        return 'https://files.hyttioaoa.de/{}.html'.format(filename)
+        return '{}/{}.html'.format(cfg['general']['baseurl'], filename)
 
     def _notify_news_mail(self, news):
         # Import the email modules we'll need
@@ -166,7 +166,7 @@ class Informer(object):
         text = hw.text
         for attachment in hw.attachments:
             fid, fname = attachment.localpath.split('/')
-            text += '''<br>Attachment {0}: https://files.hyttioaoa.de/{1}<br>'''.format(fname, attachment.localpath)
+            text += '''<br>Attachment {0}: {2}/{1}<br>'''.format(fname, attachment.localpath, cfg['general']['baseurl'])
         if len(text) > 900:
             url = self._make_site(text)
             shorttext = text[:900]

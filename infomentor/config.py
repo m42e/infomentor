@@ -13,6 +13,7 @@ def load():
             _config.add_section('smtp')
             _config['pushover']['apikey'] = ''
             _config['general']['secretkey'] = ''
+            _config['general']['baseurl'] = ''
             _config['smtp']['server'] = ''
             _config['smtp']['username'] = ''
             _config['smtp']['password'] = ''
