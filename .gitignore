@@ -133,7 +133,7 @@ pip-selfcheck.json
 
 # End of https://www.gitignore.io/api/python
 
-informentor.ini
-informentor.db
+infomentor.ini
+infomentor.db
 log.*
 
