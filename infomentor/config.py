@@ -3,23 +3,32 @@ import os
 
 _config = None
 
-def load():
+
+def _set_defaults(config):
+    config.add_section('pushover')
+    config.add_section('general')
+    config.add_section('smtp')
+    config['pushover']['apikey'] = ''
+    config['general']['secretkey'] = ''
+    config['general']['baseurl'] = ''
+    config['general']['adminmail'] = ''
+    config['smtp']['server'] = ''
+    config['smtp']['username'] = ''
+    config['smtp']['password'] = ''
+
+def load(cfg_file='informentor.ini'):
+    '''Load the config from the file'''
     global _config
     if _config is None:
         _config = configparser.ConfigParser()
-        if not os.path.isfile('infomentor.ini'):
-            _config.add_section('pushover')
-            _config.add_section('general')
-            _config.add_section('smtp')
-            _config['pushover']['apikey'] = ''
-            _config['general']['secretkey'] = ''
-            _config['general']['baseurl'] = ''
-            _config['smtp']['server'] = ''
-            _config['smtp']['username'] = ''
-            _config['smtp']['password'] = ''
-            with open('infomentor.ini', 'w+') as f:
-                _config.write(f)
-        _config.read('infomentor.ini')
+        if not os.path.isfile(cfg_file):
+            _set_defaults(_config)
+            save(cfg_file)
+        _config.read(cfg_file)
     return _config
 
-
+def save(cfg_file='informentor.ini'):
+    '''Write config to file'''
+    global _config
+    with open(cfg_file, 'w+') as f:
+        _config.write(f)

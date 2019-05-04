@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 _session = None
 
 def get_db(filename='infomentor.db'):
+    '''Get the database session for infomentor'''
     global _session
     if _session is None:
         engine = create_engine(f'sqlite:///{filename}')

@@ -23,10 +23,12 @@ class InfomentorFile(object):
 
     @property
     def targetfile(self):
+        '''Get the files output path'''
         return os.path.join(self.directory, self.fullfilename)
 
     @property
     def targetdir(self):
+        '''Get the files output directory'''
         return os.path.join(self.directory, self.randomid)
 
     @property
@@ -36,6 +38,7 @@ class InfomentorFile(object):
         return os.path.join(self.randomid, self.filename)
 
     def save_file(self, content):
+        '''Write file to the registered path'''
         os.makedirs(self.targetdir, exist_ok=True)
         with open(self.targetfile, 'wb+') as f:
             f.write(content)
@@ -136,6 +139,7 @@ class Infomentor(object):
         )
 
     def _get_hidden_fields(self):
+        '''Extracts key/value elements from hidden fields'''
         hiddenfields = self._extract_hidden_fields()
         field_values = {}
         for f in hiddenfields:
@@ -151,14 +155,15 @@ class Infomentor(object):
         return field_values
 
     def _extract_hidden_fields(self):
+        '''Extracts all the hidden fields from a infomentor login page'''
         hidden_re = '<input type="hidden"(.*?) />'
         hiddenfields = re.findall(hidden_re, self._last_result.text)
         return hiddenfields
 
     def _finalize_login(self):
+        '''The final login step to get the cookie'''
         # Read the oauth token which is the final token for the login
         oauth_token = self._get_auth_token()
-        # authenticate
         self._do_post(
             self._im1_url('mentor/'),
             data={'oauth_token': oauth_token}
@@ -243,27 +248,26 @@ class Infomentor(object):
         return file.fullfilename
 
     def _build_url(self, path='', base=BASE_IM1):
+        '''Builds a general infomentor (IM1) url'''
         return '{}/{}'.format(base, path)
 
     def _mim_url(self, path=''):
+        '''Builds a general mein.infomentor (MIM) url'''
         return self._build_url(path, base=self.BASE_MIM)
 
     def _im1_url(self, path=''):
+        '''Builds a general infomentor (IM1) url'''
         return self._build_url(path, base=self.BASE_IM1)
 
     def get_news_list(self):
+        '''Fetches the list of news'''
         self.logger.info('fetching news')
         self._do_post(self._mim_url('News/news/GetArticleList'))
         news_json = self.get_json_return()
         return [str(i['id']) for i in news_json['items']]
 
-    def parse_news(self, news_json):
-        idlist = [str(i['id']) for i in im_news['items']]
-        self.logger.info('Parsing %d news (%s)', im_news['totalItems'], ', '.join(idlist))
-        for news_item in reversed(im_news['items']):
-                newsdata = self.im.get_article(news_item['id'])
-
     def get_news_article(self, id):
+        '''Receive all the article information'''
         article_json = self.get_article(id)
         storenewsdata = {
             k: article_json[k] for k in ('title', 'content', 'date')
@@ -285,6 +289,7 @@ class Infomentor(object):
         return news
 
     def get_article(self, id):
+        '''Receive the article details'''
         self.logger.info('fetching article: %s', id)
         self._do_post(
             self._mim_url('News/news/GetArticle'),
@@ -293,12 +298,14 @@ class Infomentor(object):
         return self.get_json_return()
 
     def get_newsimage(self, id):
+        '''Fetches the image to a corresponding news entry'''
         self.logger.info('fetching article image: %s', id)
         filename = '{}.image'.format(id)
         url = 'News/NewsImage/GetImage?id={}'.format(id)
         return self.download_file(url, directory='images', filename=filename)
 
     def get_calendar(self, offset=0, weeks=1):
+        '''Fetches a list of calendar entries'''
         self.logger.info('fetching calendar')
         utcoffset = self._get_utc_offset()
         data = {
@@ -316,6 +323,7 @@ class Infomentor(object):
         return self.get_json_return()
 
     def get_event(self, eventid):
+        '''Request the event details from the server'''
         self.logger.info('fetching calendar entry')
         data = {'id': eventid}
         self._do_post(
@@ -325,6 +333,7 @@ class Infomentor(object):
         return self.get_json_return()
 
     def get_homework(self, offset=0):
+        '''Receives a list of homework for the week'''
         self.logger.info('fetching homework')
         startofweek = self._get_start_of_week(offset)
         timestamp = startofweek.strftime('%Y-%m-%dT00:00:00.000Z')
@@ -339,6 +348,7 @@ class Infomentor(object):
         return self.get_json_return()
 
     def get_homework_list(self):
+        '''Receives a list of homework'''
         self._homework = {}
         homeworklist = []
         homework = []
@@ -382,6 +392,7 @@ class Infomentor(object):
         return self.get_json_return()
 
     def get_json_return(self):
+        '''Read the json from the result or write the response to the log'''
         try:
             return self._last_result.json()
         except json.JSONDecodeError as jse:
@@ -391,6 +402,7 @@ class Infomentor(object):
             raise
 
     def _get_week_dates(self, offset=0, weeks=1):
+        '''Convert the current week, an offset and the timespan in weeks to start and end days'''
         weekoffset = datetime.timedelta(days=7*offset)
 
         startofweek = self._get_start_of_week()
@@ -409,11 +421,13 @@ class Infomentor(object):
         return data
 
     def _get_utc_offset(self):
+        '''Calculate the UTCoffset'''
         now = datetime.datetime.now()
         utctime = datetime.datetime.utcnow()
         return (now.hour - utctime.hour)*60
 
     def _get_start_of_week(self, offset=0):
+        '''Get the start of the current + offset week'''
         now = datetime.datetime.now()
         dayofweek = now.weekday()
         startofweek = now - datetime.timedelta(days=dayofweek)
