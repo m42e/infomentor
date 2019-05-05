@@ -18,7 +18,7 @@ def _set_defaults(config):
     config['smtp']['username'] = ''
     config['smtp']['password'] = ''
 
-def load(cfg_file='informentor.ini'):
+def load(cfg_file='infomentor.ini'):
     '''Load the config from the file'''
     global _config
     if _config is None:
@@ -29,7 +29,7 @@ def load(cfg_file='informentor.ini'):
         _config.read(cfg_file)
     return _config
 
-def save(cfg_file='informentor.ini'):
+def save(cfg_file='infomentor.ini'):
     '''Write config to file'''
     global _config
     with open(cfg_file, 'w+') as f:
