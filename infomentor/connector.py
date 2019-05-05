@@ -247,7 +247,7 @@ class Infomentor(object):
         file.save_file(self._last_result.content)
         return file.fullfilename
 
-    def _build_url(self, path='', base=BASE_IM1):
+    def _build_url(self, path='', base=self.BASE_IM1):
         '''Builds a general infomentor (IM1) url'''
         return '{}/{}'.format(base, path)
 
