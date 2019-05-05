@@ -4,6 +4,7 @@ import uuid
 import os
 import re
 import dateparser
+import hashlib
 import datetime
 import math
 import pushover
@@ -241,14 +242,8 @@ class Informer(object):
         cal = icx.get_named_calendar(cname)
         if not cal:
             cal = icx.create_calendar(cname)
-        calentries = self.im.get_calendar()
-        known_entries = {}
-        for calevent in cal.events():
-            if calevent.data is None:
-                continue
-            uid = re.findall("UID:(.*)", calevent.data)[0]
-            known_entries[uid] = calevent
 
+        calentries = self.im.get_calendar()
         for entry in calentries:
             self.logger.debug(entry)
             uid = "infomentor_{}".format(entry["id"])
@@ -267,13 +262,30 @@ class Informer(object):
                 event.add("dtend", dateparser.parse(entry["end"]).date())
 
             calend.add_component(event)
-            new_cal_entry = calend.to_ical().decode("utf-8").replace("\r", "")
-            if uid in known_entries:
-                if known_entries[uid].data == new_cal_entry:
+            new_cal_entry = calend.to_ical().replace(b"\r", b"")
+            new_cal_hash = hashlib.sha1(new_cal_entry).hexdigest()
+            session = db.get_db()
+            storedata = {
+                'calendar_id': uid,
+                'ical': new_cal_entry,
+                'hash': new_cal_hash
+            }
+            calendarentry = session.query(model.CalendarEntry).filter(model.CalendarEntry.calendar_id == uid) .with_parent(self.user, "calendarentries").one_or_none()
+            if calendarentry is not None :
+                if calendarentry.hash == new_cal_hash:
                     self.logger.info("no change for calendar entry {}".format(uid))
                     continue
                 else:
-                    self.logger.info("update for calendar entry {}".format(uid))
-            self.logger.debug(calend.to_ical())
+                    self.logger.info("update calendar entry {}".format(uid))
+                    for key, value in storedata.items():
+                        setattr(calendarentry, key, value)
+
+            else:
+                self.logger.info("new calendar entry {}".format(uid))
+                calendarentry = model.CalendarEntry(**storedata)
+
+            self.user.calendarentries.append(calendarentry)
+            session.commit()
+            self.logger.debug(new_cal_entry.decode('utf-8'))
             cal.add_event(calend.to_ical())
 

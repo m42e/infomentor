@@ -32,6 +32,7 @@ class User(ModelBase):
     wantstatus = Column(Boolean)
     homeworks = relationship("Homework",  back_populates="user")
     news = relationship("News",back_populates="user")
+    calendarentries = relationship("CalendarEntry", back_populates="user", uselist=True)
 
     def __init__(self, *args, **kwargs):
         self._setup_cipher()
@@ -118,6 +119,22 @@ class News(ModelBase):
     def __repr__(self):
         return "<News(id='%d', title='%s')>" % (
             self.id, self.title)
+
+class CalendarEntry(ModelBase):
+    '''A News entry'''
+    __tablename__ = 'calendarentries'
+
+    id = Column(Integer, primary_key=True)
+    calendar_id = Column(Integer)
+    title = Column(String)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    ical = Column(String)
+    hash = Column(String)
+    user = relationship("User", back_populates="calendarentries")
+
+    def __repr__(self):
+        return "<CalendarEntry(id='%d', title='%s', hash='%s')>" % (
+            self.id, self.title, hash)
 
 class Homework(ModelBase):
     '''A homework entry'''
