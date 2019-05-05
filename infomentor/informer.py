@@ -272,6 +272,8 @@ class Informer(object):
                 if known_entries[uid].data == new_cal_entry:
                     self.logger.info("no change for calendar entry {}".format(uid))
                     continue
+                else:
+                    self.logger.info("update for calendar entry {}".format(uid))
             self.logger.debug(calend.to_ical())
             cal.add_event(calend.to_ical())
 
