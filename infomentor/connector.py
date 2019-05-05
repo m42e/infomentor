@@ -247,8 +247,10 @@ class Infomentor(object):
         file.save_file(self._last_result.content)
         return file.fullfilename
 
-    def _build_url(self, path='', base=self.BASE_IM1):
+    def _build_url(self, path='', base=None):
         '''Builds a general infomentor (IM1) url'''
+        if base is None:
+            base = self.BASE_IM1
         return '{}/{}'.format(base, path)
 
     def _mim_url(self, path=''):
