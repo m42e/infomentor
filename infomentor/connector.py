@@ -10,7 +10,7 @@ import contextlib
 import logging
 import urllib.parse
 import uuid
-from infomentor import model
+from infomentor import model, config
 
 class InfomentorFile(object):
     '''Represent a file which is downloaded'''
@@ -47,14 +47,14 @@ class InfomentorFile(object):
 class Infomentor(object):
     '''Basic object for handling infomentor site login and fetching of data'''
 
-    BASE_IM1 = 'https://im1.infomentor.de/Germany/Germany/Production'
-    BASE_MIM = 'https://mein.infomentor.de'
-
     def __init__(self, user, logger=None):
         '''Create informentor object for username'''
         self.logger = logger or logging.getLogger(__name__)
         self._last_result = None
         self.user = user
+        self.cfg = config.load()
+        self.BASE_IM1 = self.cfg['general']['im1url']
+        self.BASE_MIM = self.cfg['general']['mimurl']
         self._create_session()
 
     def _create_session(self):

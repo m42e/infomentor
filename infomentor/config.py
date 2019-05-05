@@ -12,6 +12,8 @@ def _set_defaults(config):
     config['general']['secretkey'] = ''
     config['general']['baseurl'] = ''
     config['general']['adminmail'] = ''
+    config['general']['im1url'] = 'https://im1.infomentor.de/Germany/Germany/Production'
+    config['general']['mimurl'] = 'https://mein.infomentor.de'
     config['smtp']['server'] = ''
     config['smtp']['username'] = ''
     config['smtp']['password'] = ''
