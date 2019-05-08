@@ -1,0 +1,14 @@
+[pushover]
+apikey = <insert pushover api key here>
+
+[general]
+secretkey = <a string to encode passwords stored in db>
+baseurl = https://infomentor.example.org
+im1url = https://im1.infomentor.de/Germany/Germany/Production
+mimurl = https://mein.infomentor.de
+
+[smtp]
+server = example.org
+username = infomentor@example.org
+password = secret1234
+
