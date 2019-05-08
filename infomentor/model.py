@@ -11,17 +11,23 @@ cfg = config.load()
 
 ModelBase = declarative_base()
 
-_PASSWORD_SECRET_KEY = cfg['general']['secretkey']
+_PASSWORD_SECRET_KEY = cfg["general"]["secretkey"]
 BS = 16
+
+
 def pad(s):
     diff = BS - len(s) % BS
-    return (s + (diff) * chr(diff)).encode('utf8')
+    return (s + (diff) * chr(diff)).encode("utf8")
+
+
 def unpad(s):
-    return s[0:-s[-1]].decode('utf8')
+    return s[0 : -s[-1]].decode("utf8")
+
 
 class User(ModelBase):
-    '''The infomentor user.'''
-    __tablename__ = 'users'
+    """The infomentor user."""
+
+    __tablename__ = "users"
 
     id = Column(Integer, primary_key=True)
     name = Column(String)
@@ -30,8 +36,8 @@ class User(ModelBase):
     apistatus = relationship("ApiStatus", back_populates="user", uselist=False)
     icalendar = relationship("ICloudCalendar", back_populates="user", uselist=False)
     wantstatus = Column(Boolean)
-    homeworks = relationship("Homework",  back_populates="user")
-    news = relationship("News",back_populates="user")
+    homeworks = relationship("Homework", back_populates="user")
+    news = relationship("News", back_populates="user")
     calendarentries = relationship("CalendarEntry", back_populates="user", uselist=True)
 
     def __init__(self, *args, **kwargs):
@@ -39,9 +45,9 @@ class User(ModelBase):
         super().__init__(*args, **kwargs)
 
     def _setup_cipher(self):
-        if not hasattr(self, 'cipher'):
+        if not hasattr(self, "cipher"):
             aeskey = hashlib.sha256(_PASSWORD_SECRET_KEY.encode()).digest()
-            self.cipher = AES.new(aeskey,AES.MODE_ECB)
+            self.cipher = AES.new(aeskey, AES.MODE_ECB)
 
     @property
     def password(self):
@@ -57,33 +63,37 @@ class User(ModelBase):
 
     def __repr__(self):
         return "<User(name='%s', password='%s')>" % (
-            self.name, '*' * len(self.password))
+            self.name,
+            "*" * len(self.password),
+        )
 
 
 class Notification(ModelBase):
-    '''This contains the information about the type of notification and additional the key to reach out to the user'''
-    __tablename__ = 'notifications'
+    """This contains the information about the type of notification and additional the key to reach out to the user"""
+
+    __tablename__ = "notifications"
 
     class Types(enum.Enum):
-        '''Supported notification types'''
+        """Supported notification types"""
+
         PUSHOVER = 1
         EMAIL = 2
         FAKE = 3
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey("users.id"))
     ntype = Column(Enum(Types))
     info = Column(String)
     user = relationship("User", back_populates="notification")
 
     def __repr__(self):
-        return "<Notification(type='{}', info='{}')>".format(
-            self.ntype, self.info)
+        return "<Notification(type='{}', info='{}')>".format(self.ntype, self.info)
 
 
 class Attachment(ModelBase):
-    '''General attachment type for homework and news'''
-    __tablename__ = 'attachments'
+    """General attachment type for homework and news"""
+
+    __tablename__ = "attachments"
 
     id = Column(Integer, primary_key=True)
     attachment_id = Column(Integer)
@@ -91,20 +101,21 @@ class Attachment(ModelBase):
     url = Column(String)
     title = Column(String)
     localpath = Column(String)
-    news_id = Column(Integer, ForeignKey('news.id'))
-    homework_id = Column(Integer, ForeignKey('homework.id'))
+    news_id = Column(Integer, ForeignKey("news.id"))
+    homework_id = Column(Integer, ForeignKey("homework.id"))
 
     news = relationship("News", back_populates="attachments")
     homework = relationship("Homework", back_populates="attachments")
 
 
 class News(ModelBase):
-    '''A News entry'''
-    __tablename__ = 'news'
+    """A News entry"""
+
+    __tablename__ = "news"
 
     id = Column(Integer, primary_key=True)
     news_id = Column(Integer)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey("users.id"))
     title = Column(String)
     content = Column(String)
     category = Column(String)
@@ -113,52 +124,64 @@ class News(ModelBase):
     imagefile = Column(String)
     notified = Column(Boolean, default=False)
     raw = Column(String)
-    attachments = relationship("Attachment", order_by=Attachment.id, back_populates="news", uselist=True)
+    attachments = relationship(
+        "Attachment", order_by=Attachment.id, back_populates="news", uselist=True
+    )
     user = relationship("User", back_populates="news")
 
     def __repr__(self):
-        return "<News(id='%d', title='%s')>" % (
-            self.id, self.title)
+        return "<News(id='%d', title='%s')>" % (self.id, self.title)
+
 
 class CalendarEntry(ModelBase):
-    '''A News entry'''
-    __tablename__ = 'calendarentries'
+    """A News entry"""
+
+    __tablename__ = "calendarentries"
 
     id = Column(Integer, primary_key=True)
     calendar_id = Column(Integer)
     title = Column(String)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey("users.id"))
     ical = Column(String)
     hash = Column(String)
     user = relationship("User", back_populates="calendarentries")
 
     def __repr__(self):
         return "<CalendarEntry(id='%d', title='%s', hash='%s')>" % (
-            self.id, self.title, hash)
+            self.id,
+            self.title,
+            hash,
+        )
+
 
 class Homework(ModelBase):
-    '''A homework entry'''
-    __tablename__ = 'homework'
+    """A homework entry"""
+
+    __tablename__ = "homework"
 
     id = Column(Integer, primary_key=True)
     homework_id = Column(Integer)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey("users.id"))
     subject = Column(String)
     courseElement = Column(String)
     text = Column(String)
     date = Column(String)
     imageUrl = Column(String)
-    attachments = relationship("Attachment", order_by=Attachment.id, back_populates="homework")
+    attachments = relationship(
+        "Attachment", order_by=Attachment.id, back_populates="homework"
+    )
     user = relationship("User", back_populates="homeworks")
 
+
 class ApiStatus(ModelBase):
-    '''Representing the result of the last trys to access the api, represented as one status'''
-    __tablename__ = 'api_status'
+    """Representing the result of the last trys to access the api, represented as one status"""
+
+    __tablename__ = "api_status"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
-    degraded_count  = Column(Integer)
-    datetime  = Column(DateTime)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    degraded_count = Column(Integer)
+    datetime = Column(DateTime)
     info = Column(String)
     ok = Column(Boolean)
     user = relationship("User", back_populates="apistatus", uselist=False)
@@ -169,14 +192,19 @@ class ApiStatus(ModelBase):
 
     def __repr__(self):
         return "<ApiStatus(ok='%s', NOKs='%d', info='%s')>" % (
-            self.ok, self.degraded_count, self.info)
+            self.ok,
+            self.degraded_count,
+            self.info,
+        )
+
 
 class ICloudCalendar(ModelBase):
-    '''An icloud account with a calendar name'''
-    __tablename__ = 'icloud_calendar'
-    
+    """An icloud account with a calendar name"""
+
+    __tablename__ = "icloud_calendar"
+
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey('users.id'))
+    user_id = Column(Integer, ForeignKey("users.id"))
     icloud_user = Column(String)
     icloud_pwd = Column(String)
     calendarname = Column(String)
@@ -187,9 +215,9 @@ class ICloudCalendar(ModelBase):
         super().__init__(*args, **kwargs)
 
     def _setup_cipher(self):
-        if not hasattr(self, 'cipher'):
+        if not hasattr(self, "cipher"):
             aeskey = hashlib.sha256(_PASSWORD_SECRET_KEY.encode()).digest()
-            self.cipher = AES.new(aeskey,AES.MODE_ECB)
+            self.cipher = AES.new(aeskey, AES.MODE_ECB)
 
     @property
     def password(self):
@@ -205,5 +233,6 @@ class ICloudCalendar(ModelBase):
 
     def __repr__(self):
         return "<ICloudCalendar(user='%s' cal='%s')>" % (
-            self.icloud_user, self.calendarname)
-
+            self.icloud_user,
+            self.calendarname,
+        )

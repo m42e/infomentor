@@ -266,12 +266,17 @@ class Informer(object):
             new_cal_hash = hashlib.sha1(new_cal_entry).hexdigest()
             session = db.get_db()
             storedata = {
-                'calendar_id': uid,
-                'ical': new_cal_entry,
-                'hash': new_cal_hash
+                "calendar_id": uid,
+                "ical": new_cal_entry,
+                "hash": new_cal_hash,
             }
-            calendarentry = session.query(model.CalendarEntry).filter(model.CalendarEntry.calendar_id == uid) .with_parent(self.user, "calendarentries").one_or_none()
-            if calendarentry is not None :
+            calendarentry = (
+                session.query(model.CalendarEntry)
+                .filter(model.CalendarEntry.calendar_id == uid)
+                .with_parent(self.user, "calendarentries")
+                .one_or_none()
+            )
+            if calendarentry is not None:
                 if calendarentry.hash == new_cal_hash:
                     self.logger.info("no change for calendar entry {}".format(uid))
                     continue
@@ -286,6 +291,5 @@ class Informer(object):
 
             self.user.calendarentries.append(calendarentry)
             session.commit()
-            self.logger.debug(new_cal_entry.decode('utf-8'))
+            self.logger.debug(new_cal_entry.decode("utf-8"))
             cal.add_event(calend.to_ical())
-

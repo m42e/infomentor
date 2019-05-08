@@ -50,3 +50,19 @@ python -m infomentor --addcalendar <username>
 The login process is a bit scary and mostly hacked. It happens often on the first run, that the login is not ready, the second run then should work without errors.
 
 The script shall be run every 10 minutes, that will keep the session alive and minimize errors.
+
+
+
+
+
+
+
+
+TODO:
+
+::
+
+{'id': 1342049, 'title': 'Jade LZK HSU 1. und 2. Klasse', 'time': '10:30 - 11:30', 'notes': '', 'enumType': 'Custom1', 'type': 'cal-custom1', 'info': {'id': 0, 'type': None,
+ 'resources': [{'id': 589680, 'fileType': 'docx', 'title': 'Lernziele HSU das Jahr.docx', 'url': '/Resources/Resource/Download/589680?api=IM2', 'fileTypeName': 'Word processor', 'apiType': 'IM2', 'connectionId': 1342049, 'connectionType':
+  'Calendar'}]}, 'establishmentName': None, 'date': '18.01.2019', 'isEditable': False, 'isDeletable': False, 'startDate': '2019-01-18', 'startTime': '10:30', 'endDate': '2019-01-18', 'endTime': '11:30', 'allDayEvent': False, 'resourcesNeed
+	ingConnection': None, 'thirdPartyApiCalendarEventId': None, 'thirdPartyApiCalendarSeriesId': None, 'thirdPartyApiCalendarId': None, 'attendeeIds': None}
