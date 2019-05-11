@@ -8,6 +8,7 @@ import hashlib
 import datetime
 import math
 import pushover
+import urllib.parse
 from icalendar import Event, vDate, Calendar
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -51,16 +52,17 @@ class Informer(object):
     def update_news(self):
         session = db.get_db()
         newslist = self.im.get_news_list()
-        for newsid in newslist:
+        for news_entry in newslist:
             news = (
                 session.query(model.News)
-                .filter(model.News.news_id == newsid)
+                .filter(model.News.news_id == news_entry['id'])
                 .with_parent(self.user, "news")
                 .one_or_none()
             )
             if news is not None:
+                self.logger.debug('Skipping news')
                 continue
-            news = self.im.get_news_article(newsid)
+            news = self.im.get_news_article(news_entry)
             self._notify_news(news)
             self.user.news.append(news)
             session.commit()
@@ -86,7 +88,7 @@ class Informer(object):
         for attachment in news.attachments:
             fid, fname = attachment.localpath.split("/")
             text += """<br>Attachment {0}: {2}/{1} <br>""".format(
-                fname, attachment.localpath, cfg["general"]["baseurl"]
+                fname, urllib.parse.quote(attachment.localpath), cfg["general"]["baseurl"]
             )
         parsed_date = dateparser.parse(news.date)
         now = datetime.datetime.now()
@@ -170,7 +172,7 @@ class Informer(object):
         for attachment in hw.attachments:
             fid, fname = attachment.localpath.split("/")
             text += """<br>Attachment {0}: {2}/{1}<br>""".format(
-                fname, attachment.localpath, cfg["general"]["baseurl"]
+                fname, urllib.parse.quote(attachment.localpath), cfg["general"]["baseurl"]
             )
         if len(text) > 900:
             url = self._make_site(text)
@@ -253,13 +255,25 @@ class Informer(object):
             event = Event()
             event.add("uid", "infomentor_{}".format(entry["id"]))
             event.add("summary", entry["title"])
-            event.add("description", event_details["notes"])
             if not event_details["allDayEvent"]:
                 event.add("dtstart", dateparser.parse(entry["start"]))
                 event.add("dtend", dateparser.parse(entry["end"]))
             else:
                 event.add("dtstart", dateparser.parse(entry["start"]).date())
                 event.add("dtend", dateparser.parse(entry["end"]).date())
+
+            description = event_details["notes"]
+            self.logger.debug(event_details['info'])
+            self.logger.debug(type(event_details['info']))
+            eventinfo = event_details['info']
+            self.logger.debug(eventinfo)
+            self.logger.debug(type(eventinfo))
+            for res in eventinfo['resources']:
+                f = self.im.download_file(res["url"], directory="files")
+                description += """\nAttachment {0}: {2}/{1}""".format(
+                    res['title'], urllib.parse.quote(f), cfg["general"]["baseurl"]
+                )
+            event.add("description", description)
 
             calend.add_component(event)
             new_cal_entry = calend.to_ical().replace(b"\r", b"")

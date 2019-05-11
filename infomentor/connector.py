@@ -262,14 +262,15 @@ class Infomentor(object):
     def get_news_list(self):
         """Fetches the list of news"""
         self.logger.info("fetching news")
-        self._do_post(self._mim_url("News/news/GetArticleList"))
+        self._do_post(self._mim_url("Communication/News/GetNewsList"))
         news_json = self.get_json_return()
-        return [str(i["id"]) for i in news_json["items"]]
+        return news_json['items']
 
-    def get_news_article(self, id):
+    def get_news_article(self, news_entry):
         """Receive all the article information"""
-        article_json = self.get_article(id)
-        storenewsdata = {k: article_json[k] for k in ("title", "content", "date")}
+        article_json = news_entry
+        storenewsdata = {k: article_json[k] for k in ("title", "content")}
+        storenewsdata["date"] = article_json["publishedDate"]
         storenewsdata["news_id"] = article_json["id"]
         storenewsdata["raw"] = json.dumps(article_json)
         storenewsdata["attachments"] = []
@@ -303,7 +304,7 @@ class Infomentor(object):
         """Fetches the image to a corresponding news entry"""
         self.logger.info("fetching article image: %s", id)
         filename = "{}.image".format(id)
-        url = "News/NewsImage/GetImage?id={}".format(id)
+        url = "Communication/NewsImage/GetImage?id={}".format(id)
         return self.download_file(url, directory="images", filename=filename)
 
     def get_calendar(self, offset=0, weeks=1):
