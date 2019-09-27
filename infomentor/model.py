@@ -252,8 +252,5 @@ class Invitation(ModelBase):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-
     def __repr__(self):
-        return "<Invitation(email='%s')>" % (
-            self.email,
-        )
+        return "<Invitation(email='%s')>" % (self.email,)

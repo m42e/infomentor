@@ -20,7 +20,6 @@ class iCloudConnector(object):
     password = None
     propfind_principal = '<A:propfind xmlns:A="DAV:"><A:prop><A:current-user-principal/></A:prop></A:propfind>'
     propfind_calendar_home_set = "<propfind xmlns='DAV:' xmlns:cd='urn:ietf:params:xml:ns:caldav'><prop> <cd:calendar-home-set/></prop></propfind>"
-    
 
     def __init__(self, username, password, **kwargs):
         self.username = username
@@ -29,7 +28,6 @@ class iCloudConnector(object):
             self.icloud_url = kwargs["icloud_url"]
         self.discover()
         self.get_calendars()
-
 
     # discover: connect to icloud using the provided credentials and discover
     #
@@ -45,10 +43,7 @@ class iCloudConnector(object):
         headers = {"Depth": "1"}
         auth = HTTPBasicAuth(self.username, self.password)
         principal_response = self.repeated_request(
-            "PROPFIND",
-            self.icloud_url,
-            auth=auth,
-            data=self.propfind_principal
+            "PROPFIND", self.icloud_url, auth=auth, data=self.propfind_principal
         )
         # Parse the resulting XML response
         soup = BeautifulSoup(principal_response.content, "lxml")
@@ -60,15 +55,20 @@ class iCloudConnector(object):
         # Next use the discovery URL to get more detailed properties - such as
         # the calendar-home-set
         home_set_response = self.repeated_request(
-            "PROPFIND",
-            discovery_url,
-            auth=auth,
-            data=self.propfind_calendar_home_set,
+            "PROPFIND", discovery_url, auth=auth, data=self.propfind_calendar_home_set
         )
         _logger.debug("Result code: {}".format(home_set_response.status_code))
         if home_set_response.status_code != 207:
-            _logger.error("Failed to retrieve calendar-home-set {}".format(home_set_response.status_code))
-            raise Exception("failed to retrieve calender home set {}".format(home_set_response.content))
+            _logger.error(
+                "Failed to retrieve calendar-home-set {}".format(
+                    home_set_response.status_code
+                )
+            )
+            raise Exception(
+                "failed to retrieve calender home set {}".format(
+                    home_set_response.content
+                )
+            )
         # And then extract the calendar-home-set URL
         soup = BeautifulSoup(home_set_response.content, "lxml")
         self.calendar_home_set_url = soup.find(
@@ -77,18 +77,20 @@ class iCloudConnector(object):
 
     def repeated_request(self, *args, **kwargs):
         for _ in range(0, 5):
-            response = requests.request(
-                *args, **kwargs
-            )
+            response = requests.request(*args, **kwargs)
             _logger.debug("Request result code: {}".format(response.status_code))
             if response.status_code != 207:
-                _logger.error("Failed to retrieve response: {}".format(response.status_code))
+                _logger.error(
+                    "Failed to retrieve response: {}".format(response.status_code)
+                )
                 _logger.error("Retry")
                 time.sleep(0.25)
             if response.status_code == 207:
                 break
         else:
-            raise Exception("failed to retrieve {} {}".format(response.content, response.headers))
+            raise Exception(
+                "failed to retrieve {} {}".format(response.content, response.headers)
+            )
         return response
 
     # get_calendars
@@ -135,4 +137,3 @@ class iCloudConnector(object):
     ):
         # to do
         pass
-

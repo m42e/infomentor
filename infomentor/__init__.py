@@ -1,1 +1,1 @@
-#from infomentor.__main__ import *
+# from infomentor.__main__ import *

@@ -18,11 +18,13 @@ from infomentor import model, config
 class InfomentorFile(object):
     """Represent a file which is downloaded"""
 
-    def __init__(self, directory, filename, seed=''):
+    def __init__(self, directory, filename, seed=""):
         if directory is None:
             raise Exception("directory is required")
         self.filename = filename
-        self.randomid = hashlib.sha1('{}{}'.format(filename, seed).encode('utf-8')).hexdigest()
+        self.randomid = hashlib.sha1(
+            "{}{}".format(filename, seed).encode("utf-8")
+        ).hexdigest()
         self.directory = directory
 
     @property
@@ -266,7 +268,7 @@ class Infomentor(object):
         self.logger.info("fetching news")
         self._do_post(self._mim_url("Communication/News/GetNewsList"))
         news_json = self.get_json_return()
-        return news_json['items']
+        return news_json["items"]
 
     def get_news_article(self, news_entry):
         """Receive all the article information"""

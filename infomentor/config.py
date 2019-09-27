@@ -4,9 +4,7 @@ import os
 _config = None
 
 _defaults = {
-    "pushover": {
-        "apikey": "",
-    },
+    "pushover": {"apikey": ""},
     "general": {
         "secretkey": "",
         "baseurl": "",
@@ -14,15 +12,10 @@ _defaults = {
         "im1url": "https://im1.infomentor.de/Germany/Germany/Production",
         "mimrul": "https://mein.infomentor.de",
     },
-    "smtp": {
-        "server": "",
-        "username": "",
-        "password": "",
-    },
-    "healthchecks": {
-        "url": "",
-    },
+    "smtp": {"server": "", "username": "", "password": ""},
+    "healthchecks": {"url": ""},
 }
+
 
 def _set_defaults(config):
     config = _defaults

@@ -56,13 +56,13 @@ class Informer(object):
         for news_entry in newslist:
             news = (
                 session.query(model.News)
-                .filter(model.News.news_id == news_entry['id'])
-                .filter(model.News.date == news_entry['publishedDate'])
+                .filter(model.News.news_id == news_entry["id"])
+                .filter(model.News.date == news_entry["publishedDate"])
                 .with_parent(self.user, "news")
                 .one_or_none()
             )
             if news is not None:
-                self.logger.debug('Skipping news %s', news_entry['id'])
+                self.logger.debug("Skipping news %s", news_entry["id"])
                 continue
             news = self.im.get_news_article(news_entry)
             self._notify_news(news)
@@ -71,7 +71,7 @@ class Informer(object):
 
     def _notify_news(self, news):
         if self.user.notification is None:
-            self.logger.debug('Warn: no notification for user')
+            self.logger.debug("Warn: no notification for user")
             return
         if self.user.notification.ntype == model.Notification.Types.PUSHOVER:
             self._notify_news_pushover(news)
@@ -93,7 +93,9 @@ class Informer(object):
         for attachment in news.attachments:
             fid, fname = attachment.localpath.split("/")
             text += """<br>Attachment {0}: {2}/{1} <br>""".format(
-                fname, urllib.parse.quote(attachment.localpath), cfg["general"]["baseurl"]
+                fname,
+                urllib.parse.quote(attachment.localpath),
+                cfg["general"]["baseurl"],
             )
         parsed_date = dateparser.parse(news.date)
         now = datetime.datetime.now()
@@ -177,7 +179,9 @@ class Informer(object):
         for attachment in hw.attachments:
             fid, fname = attachment.localpath.split("/")
             text += """<br>Attachment {0}: {2}/{1}<br>""".format(
-                fname, urllib.parse.quote(attachment.localpath), cfg["general"]["baseurl"]
+                fname,
+                urllib.parse.quote(attachment.localpath),
+                cfg["general"]["baseurl"],
             )
         if len(text) > 900:
             url = self._make_site(text)
@@ -240,36 +244,37 @@ class Informer(object):
 
     def _send_invitation(self, calobj, to, fr="infomentor@09a.de"):
         event = calobj.subcomponents[0]
-        eml_body = event['description']
-        eml_body_bin = event['description']
-        msg = MIMEMultipart('mixed')
-        msg['Reply-To']=fr
-        msg['Subject'] = event['summary']
-        msg['From'] = fr
-        msg['To'] = to
+        eml_body = event["description"]
+        eml_body_bin = event["description"]
+        msg = MIMEMultipart("mixed")
+        msg["Reply-To"] = fr
+        msg["Subject"] = event["summary"]
+        msg["From"] = fr
+        msg["To"] = to
 
-        part_email = MIMEText(eml_body,"html")
-        part_email_text = MIMEText(eml_body,"plain")
-        part_cal = MIMEText(calobj.to_ical().decode('utf-8'),'calendar;method=REQUEST')
+        part_email = MIMEText(eml_body, "html")
+        part_email_text = MIMEText(eml_body, "plain")
+        part_cal = MIMEText(calobj.to_ical().decode("utf-8"), "calendar;method=REQUEST")
 
-        msgAlternative = MIMEMultipart('alternative')
+        msgAlternative = MIMEMultipart("alternative")
         msg.attach(msgAlternative)
 
-        ical_atch = MIMEBase('application/ics',' ;name="%s"'%("invite.ics"))
-        ical_atch.set_payload(calobj.to_ical().decode('utf-8'))
+        ical_atch = MIMEBase("application/ics", ' ;name="%s"' % ("invite.ics"))
+        ical_atch.set_payload(calobj.to_ical().decode("utf-8"))
         encoders.encode_base64(ical_atch)
-        ical_atch.add_header('Content-Disposition', 'attachment; filename="%s"'%("invite.ics"))
+        ical_atch.add_header(
+            "Content-Disposition", 'attachment; filename="%s"' % ("invite.ics")
+        )
 
-        eml_atch = MIMEBase('text/plain','')
-        eml_atch.set_payload('')
+        eml_atch = MIMEBase("text/plain", "")
+        eml_atch.set_payload("")
         encoders.encode_base64(eml_atch)
-        eml_atch.add_header('Content-Transfer-Encoding', "")
+        eml_atch.add_header("Content-Transfer-Encoding", "")
 
         msg.attach(part_email)
         msg.attach(part_email_text)
         msg.attach(part_cal)
         self._send_mail(msg)
-
 
     def _setup_icloudconnector(self):
         if self.cal is None:
@@ -284,17 +289,19 @@ class Informer(object):
                 self.logger.warn("using icloud")
             except Exception as e:
                 self.logger.exception("using icloud dummy connector")
+
                 class Dummy(object):
                     def add_event(self, *args, **kwargs):
                         pass
+
                 self.cal = Dummy()
-            
+
     def _write_icalendar(self, calend):
         try:
             self._setup_icloudconnector()
             self.cal.add_event(calend.to_ical())
         except Exception as e:
-            self.logger.exception('Calendar failed')
+            self.logger.exception("Calendar failed")
 
     def update_calendar(self):
         session = db.get_db()
@@ -304,7 +311,9 @@ class Informer(object):
             calentries = self.im.get_calendar()
             for entry in calentries:
                 self.logger.debug(entry)
-                uid = str(uuid.uuid5(uuid.NAMESPACE_URL, "infomentor_{}".format(entry["id"])))
+                uid = str(
+                    uuid.uuid5(uuid.NAMESPACE_URL, "infomentor_{}".format(entry["id"]))
+                )
                 event_details = self.im.get_event(entry["id"])
                 calend = Calendar()
                 event = Event()
@@ -319,13 +328,13 @@ class Informer(object):
                     event.add("dtend", dateparser.parse(entry["end"]).date())
 
                 description = event_details["notes"]
-                eventinfo = event_details['info']
+                eventinfo = event_details["info"]
                 new_cal_entry = calend.to_ical().replace(b"\r", b"")
                 new_cal_hash = hashlib.sha1(new_cal_entry).hexdigest()
-                for res in eventinfo['resources']:
+                for res in eventinfo["resources"]:
                     f = self.im.download_file(res["url"], directory="files")
                     description += """\nAttachment {0}: {2}/{1}""".format(
-                        res['title'], urllib.parse.quote(f), cfg["general"]["baseurl"]
+                        res["title"], urllib.parse.quote(f), cfg["general"]["baseurl"]
                     )
                 event.add("description", description)
 
@@ -364,4 +373,4 @@ class Informer(object):
                 self.user.calendarentries.append(calendarentry)
                 session.commit()
         except Exception as e:
-            self.logger.exception('Calendar failed')
+            self.logger.exception("Calendar failed")
