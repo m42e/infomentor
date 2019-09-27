@@ -10,7 +10,7 @@ setup(
     packages=find_packages(),
     entry_points = {
         'console_scripts': [
-            'infomentor=infomentor:main',
+            'infomentor=infomentor.__main__:main',
         ],
     },
     install_requires=[
