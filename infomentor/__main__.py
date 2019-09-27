@@ -34,6 +34,7 @@ def parse_args(arglist):
     parser.add_argument("--username", type=str, nargs="?", help="infomentor username")
     parser.add_argument("--password", type=str, nargs="?", help="infomentor password")
     parser.add_argument("--fake", action="store_true", help="add fake")
+    parser.add_argument("--notifyerrors", action="store_true", help="add fake")
     parser.add_argument("--pushover", type=str, nargs="?", help="pushover user id")
     parser.add_argument("--mail", type=str, nargs="?", help="e-mail for notification")
     parser.add_argument(
@@ -59,13 +60,13 @@ def perform_user_update(args):
         session.query(model.User).filter(model.User.name == username).one_or_none()
     )
     if existing_user is not None:
-        print("user exists, changing pw")
+        logger.info("Updating user {}", username)
     else:
-        print(f"Adding user: {username}")
+        logger.info("Creating User user {}", username)
 
     if args.password is None:
+        logger.info("No password provided, asking for it")
         import getpass
-
         password = getpass.getpass(prompt="Password: ")
     else:
         password = args.password
@@ -76,15 +77,23 @@ def perform_user_update(args):
         user = model.User(name=username, password=password)
         session.add(user)
 
+    if args.notifyerrors:
+        user.wantstatus = True
+    else:
+        user.wantstatus = False
+
     if args.pushover is not None:
+        logger.info("Adding pushover notification")
         user.notification = model.Notification(
             ntype=model.Notification.Types.PUSHOVER, info=args.pushover
         )
     elif args.mail:
+        logger.info("Adding email notification")
         user.notification = model.Notification(
             ntype=model.Notification.Types.EMAIL, info=args.mail
         )
     elif args.fake:
+        logger.info("Adding fake notification")
         user.notification = model.Notification(
             ntype=model.Notification.Types.FAKE, info=""
         )
@@ -94,6 +103,7 @@ def perform_user_update(args):
         and args.icloudpwd is not None
         and args.icloudcalendar is not None
     ):
+        logger.info("Adding icloud calendar")
         user.icalendar = model.ICloudCalendar(
             icloud_user=args.iclouduser,
             password=args.icloudpwd,
@@ -101,6 +111,7 @@ def perform_user_update(args):
         )
 
     if args.invitationmail:
+        logger.info("Activating sending of calendar entries per mail")
         user.invitation = model.Invitation(email=mail)
 
     session.commit()
@@ -111,6 +122,7 @@ def notify_users():
     session = db.get_db()
     cfg = config.load()
     if cfg["healthchecks"]["url"] != "":
+        logger.info("Triggering Healthcheck Start")
         requests.get(cfg["healthchecks"]["url"] + "/start")
 
     for user in session.query(model.User):
@@ -161,6 +173,7 @@ def notify_users():
         session.commit()
 
     if cfg["healthchecks"]["url"] != "":
+        logger.info("Triggering Healthcheck Stop")
         requests.get(cfg["healthchecks"]["url"])
 
 

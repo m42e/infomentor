@@ -1,8 +1,11 @@
 # Infomentor Tool
 
 This tool is designed to check the infomentor portal and send notifications using mail or pushover api.
+It is also capable of sending Calendar invitations/entries.
 
 ## Usage
+
+You could install it locally but using the docker image is preferred.
 
 ```
 python3 -m venv venv
@@ -13,53 +16,29 @@ infomentor
 
 After the first run a `infomentor.ini` file is available which has a few values to be entered.
 
-
 ## Docker
 
 This could be run within docker. You it has a volume `/home/appuser` where all the data is stored. In favour of accessing it from a webserver you should bindmount it.
-There also the infomentor.ini should be placed.
+There also the infomentor.ini would be placed.
 
 Build the container by `docker build -t infomentor:latest .` and run it like this:
+
+### Notify Users / First Run
 
 ```
 docker run -v '/var/docker/infomentor/:/home/appuser' infomentor:latest
 ```
 
-for adding an user or all the commands run it adding -it to it, like:
+### Adding a user
 
 ```
-docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest adduser
+docker run -v '/var/docker/infomentor/:/home/appuser' infomentor:latest --username <uname> --password <pwd> --pushover <pushoverid> --invitationmail <mymail>
 ```
 
-## Manage Users
-
-
-### Step 1 create a user
-
-Provide the username and password for infomentor.
-```
-docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest adduser --username <username>
-```
-### Step 2 add notification mechanism
-```
-docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest addmail --username <username>
-```
-
-or
+### See all options
 
 ```
-docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest pushover --username <username>
-```
-
-### Step 3 (optional) Add iCloud calendar 
-
-*NB:* This is currently not working. You could add it, but it won't work.
-
-It is capable of syncing all the infomentor calendar elements to icloud calendar
-
-```
-source venv/bin/activate
-addcalendar --username <username>
+docker run -v '/var/docker/infomentor/:/home/appuser' infomentor:latest --help
 ```
 
 ## NB

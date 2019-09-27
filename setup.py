@@ -11,9 +11,6 @@ setup(
     entry_points = {
         'console_scripts': [
             'infomentor=infomentor:main',
-            'adduser=infomentor:run_adduser',
-            'addmail=infomentor:run_addmail',
-            'addpushover=infomentor:run_addpushover',
         ],
     },
     install_requires=[
