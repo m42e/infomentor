@@ -41,6 +41,16 @@ docker run -v '/var/docker/infomentor/:/home/appuser' infomentor:latest --userna
 docker run -v '/var/docker/infomentor/:/home/appuser' infomentor:latest --help
 ```
 
+## Webserver Setup (nginx)
+
+If you use the bindmount path as above:
+
+```
+location / {
+ root /var/docker/infomentor/files;
+}
+```
+
 ## NB
 
 The login process is a bit scary and mostly hacked. It happens often on the first run, that the login is not ready, the second run then should work without errors.
