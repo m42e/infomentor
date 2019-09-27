@@ -23,13 +23,14 @@ pushover.init(cfg["pushover"]["apikey"])
 
 class Informer(object):
     """The Logic part of the infomentor notifier.
-    
+
     This class offers the methods required to notify a user of new News and Homework items posted on infomentor."""
 
     def __init__(self, user, im, logger):
         self.logger = logger or logging.getLogger(__name__)
         self.user = user
         self.im = im
+        self.cal = None
 
     def send_status_update(self, text):
         """In case something unexpected happends and the user has activated the feature to get notified about it, this will send out the information"""
@@ -56,11 +57,12 @@ class Informer(object):
             news = (
                 session.query(model.News)
                 .filter(model.News.news_id == news_entry['id'])
+                .filter(model.News.date == news_entry['publishedDate'])
                 .with_parent(self.user, "news")
                 .one_or_none()
             )
             if news is not None:
-                self.logger.debug('Skipping news')
+                self.logger.debug('Skipping news %s', news_entry['id'])
                 continue
             news = self.im.get_news_article(news_entry)
             self._notify_news(news)
@@ -68,6 +70,9 @@ class Informer(object):
             session.commit()
 
     def _notify_news(self, news):
+        if self.user.notification is None:
+            self.logger.debug('Warn: no notification for user')
+            return
         if self.user.notification.ntype == model.Notification.Types.PUSHOVER:
             self._notify_news_pushover(news)
         elif self.user.notification.ntype == model.Notification.Types.EMAIL:
@@ -233,77 +238,128 @@ class Informer(object):
         s.send_message(mail)
         s.quit()
 
+    def _send_invitation(self, calobj, to, fr="infomentor@09a.de"):
+        event = calobj.subcomponents[0]
+        eml_body = event['description']
+        eml_body_bin = event['description']
+        msg = MIMEMultipart('mixed')
+        msg['Reply-To']=fr
+        msg['Subject'] = event['summary']
+        msg['From'] = fr
+        msg['To'] = to
+
+        part_email = MIMEText(eml_body,"html")
+        part_cal = MIMEText(calobj.to_ical().decode('utf-8'),'calendar;method=REQUEST')
+
+        msgAlternative = MIMEMultipart('alternative')
+        msg.attach(msgAlternative)
+
+        ical_atch = MIMEBase('application/ics',' ;name="%s"'%("invite.ics"))
+        ical_atch.set_payload(calobj.to_ical().decode('utf-8'))
+        encoders.encode_base64(ical_atch)
+        ical_atch.add_header('Content-Disposition', 'attachment; filename="%s"'%("invite.ics"))
+
+        eml_atch = MIMEBase('text/plain','')
+        eml_atch.set_payload('')
+        encoders.encode_base64(eml_atch)
+        eml_atch.add_header('Content-Transfer-Encoding', "")
+
+        msgAlternative.attach(part_email)
+        msgAlternative.attach(part_cal)
+        self._send_mail(msg)
+
+
+    def _setup_icloudconnector(self):
+        if self.cal is None:
+            try:
+                icx = icloudcalendar.iCloudConnector(
+                    self.user.icalendar.icloud_user, self.user.icalendar.password
+                )
+                cname = self.user.icalendar.calendarname
+                self.cal = icx.get_named_calendar(cname)
+                if not self.cal:
+                    self.cal = icx.create_calendar(cname)
+                self.logger.warn("using icloud")
+            except Exception as e:
+                self.logger.exception("using icloud dummy connector")
+                class Dummy(object):
+                    def add_event(self, *args, **kwargs):
+                        pass
+                self.cal = Dummy()
+            
+    def _write_icalendar(self, calend):
+        try:
+            self._setup_icloudconnector()
+            self.cal.add_event(calend.to_ical())
+        except Exception as e:
+            self.logger.exception('Calendar failed')
+
     def update_calendar(self):
         session = db.get_db()
-        if self.user.icalendar is None:
+        if self.user.icalendar is None and self.user.invitation is None:
             return
-        icx = icloudcalendar.iCloudConnector(
-            self.user.icalendar.icloud_user, self.user.icalendar.password
-        )
-        cname = self.user.icalendar.calendarname
-        cal = icx.get_named_calendar(cname)
-        if not cal:
-            cal = icx.create_calendar(cname)
-
-        calentries = self.im.get_calendar()
-        for entry in calentries:
-            self.logger.debug(entry)
-            uid = "infomentor_{}".format(entry["id"])
-            event_details = self.im.get_event(entry["id"])
-            self.logger.debug(event_details)
-            calend = Calendar()
-            event = Event()
-            event.add("uid", "infomentor_{}".format(entry["id"]))
-            event.add("summary", entry["title"])
-            if not event_details["allDayEvent"]:
-                event.add("dtstart", dateparser.parse(entry["start"]))
-                event.add("dtend", dateparser.parse(entry["end"]))
-            else:
-                event.add("dtstart", dateparser.parse(entry["start"]).date())
-                event.add("dtend", dateparser.parse(entry["end"]).date())
-
-            description = event_details["notes"]
-            self.logger.debug(event_details['info'])
-            self.logger.debug(type(event_details['info']))
-            eventinfo = event_details['info']
-            self.logger.debug(eventinfo)
-            self.logger.debug(type(eventinfo))
-            for res in eventinfo['resources']:
-                f = self.im.download_file(res["url"], directory="files")
-                description += """\nAttachment {0}: {2}/{1}""".format(
-                    res['title'], urllib.parse.quote(f), cfg["general"]["baseurl"]
-                )
-            event.add("description", description)
-
-            calend.add_component(event)
-            new_cal_entry = calend.to_ical().replace(b"\r", b"")
-            new_cal_hash = hashlib.sha1(new_cal_entry).hexdigest()
-            session = db.get_db()
-            storedata = {
-                "calendar_id": uid,
-                "ical": new_cal_entry,
-                "hash": new_cal_hash,
-            }
-            calendarentry = (
-                session.query(model.CalendarEntry)
-                .filter(model.CalendarEntry.calendar_id == uid)
-                .with_parent(self.user, "calendarentries")
-                .one_or_none()
-            )
-            if calendarentry is not None:
-                if calendarentry.hash == new_cal_hash:
-                    self.logger.info("no change for calendar entry {}".format(uid))
-                    continue
+        try:
+            calentries = self.im.get_calendar()
+            for entry in calentries:
+                self.logger.debug(entry)
+                uid = str(uuid.uuid5(uuid.NAMESPACE_URL, "infomentor_{}".format(entry["id"])))
+                event_details = self.im.get_event(entry["id"])
+                calend = Calendar()
+                event = Event()
+                event.add("uid", uid)
+                event.add("summary", entry["title"])
+                event.add("dtstamp", datetime.datetime.now())
+                if not event_details["allDayEvent"]:
+                    event.add("dtstart", dateparser.parse(entry["start"]))
+                    event.add("dtend", dateparser.parse(entry["end"]))
                 else:
-                    self.logger.info("update calendar entry {}".format(uid))
-                    for key, value in storedata.items():
-                        setattr(calendarentry, key, value)
+                    event.add("dtstart", dateparser.parse(entry["start"]).date())
+                    event.add("dtend", dateparser.parse(entry["end"]).date())
 
-            else:
-                self.logger.info("new calendar entry {}".format(uid))
-                calendarentry = model.CalendarEntry(**storedata)
+                description = event_details["notes"]
+                eventinfo = event_details['info']
+                new_cal_entry = calend.to_ical().replace(b"\r", b"")
+                new_cal_hash = hashlib.sha1(new_cal_entry).hexdigest()
+                for res in eventinfo['resources']:
+                    f = self.im.download_file(res["url"], directory="files")
+                    description += """\nAttachment {0}: {2}/{1}""".format(
+                        res['title'], urllib.parse.quote(f), cfg["general"]["baseurl"]
+                    )
+                event.add("description", description)
 
-            self.user.calendarentries.append(calendarentry)
-            session.commit()
-            self.logger.debug(new_cal_entry.decode("utf-8"))
-            cal.add_event(calend.to_ical())
+                calend.add_component(event)
+                new_cal_entry = calend.to_ical().replace(b"\r", b"")
+                session = db.get_db()
+                storedata = {
+                    "calendar_id": uid,
+                    "ical": new_cal_entry,
+                    "hash": new_cal_hash,
+                }
+                calendarentry = (
+                    session.query(model.CalendarEntry)
+                    .filter(model.CalendarEntry.calendar_id == uid)
+                    .with_parent(self.user, "calendarentries")
+                    .one_or_none()
+                )
+                if calendarentry is not None:
+                    if calendarentry.hash == new_cal_hash:
+                        self.logger.info("calendar entry UNCHANGED {}".format(uid))
+                        continue
+                    else:
+                        self.logger.info("calendar entry UPDATED {}".format(uid))
+                        for key, value in storedata.items():
+                            setattr(calendarentry, key, value)
+
+                else:
+                    self.logger.info("calendar entry NEW {}".format(uid))
+                    calendarentry = model.CalendarEntry(**storedata)
+
+                self.logger.debug(new_cal_entry.decode("utf-8"))
+                if self.user.icalendar is not None:
+                    self._write_icalendar(calend)
+                if self.user.invitation is not None:
+                    self._send_invitation(calend, self.user.invitation.email)
+                self.user.calendarentries.append(calendarentry)
+                session.commit()
+        except Exception as e:
+            self.logger.exception('Calendar failed')

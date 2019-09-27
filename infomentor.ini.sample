@@ -12,3 +12,5 @@ server = example.org
 username = infomentor@example.org
 password = secret1234
 
+[healthcheck]
+url = https://health.d1v3.de/ping/123123123123123

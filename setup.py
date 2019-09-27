@@ -8,6 +8,14 @@ setup(
     author_email="matthias@bilger.info",
     description="grab infomentor news and push or mail them",
     packages=find_packages(),
+    entry_points = {
+        'console_scripts': [
+            'infomentor=infomentor:main',
+            'adduser=infomentor:run_adduser',
+            'addmail=infomentor:run_addmail',
+            'addpushover=infomentor:run_addpushover',
+        ],
+    },
     install_requires=[
         "pycrypto",
         "request",

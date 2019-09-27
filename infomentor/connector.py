@@ -10,17 +10,19 @@ import contextlib
 import logging
 import urllib.parse
 import uuid
+import glob
+import hashlib
 from infomentor import model, config
 
 
 class InfomentorFile(object):
     """Represent a file which is downloaded"""
 
-    def __init__(self, directory, filename):
+    def __init__(self, directory, filename, seed=''):
         if directory is None:
             raise Exception("directory is required")
         self.filename = filename
-        self.randomid = str(uuid.uuid4())
+        self.randomid = hashlib.sha1('{}{}'.format(filename, seed).encode('utf-8')).hexdigest()
         self.directory = directory
 
     @property
@@ -232,7 +234,7 @@ class Infomentor(object):
 
     def _download_file(self, url, directory, filename=None):
         """download a file with  provided filename"""
-        file = InfomentorFile(directory, filename)
+        file = InfomentorFile(directory, filename, seed=url)
         self.logger.info("to (randomized) directory %s", file.targetdir)
         url = self._mim_url(url)
         self._do_get(url)
@@ -291,7 +293,7 @@ class Infomentor(object):
                 self.logger.exception("failed to store attachment")
         news = model.News(**storenewsdata)
         with contextlib.suppress(Exception):
-            news.imagefile = self.get_newsimage(id)
+            news.imagefile = self.get_newsimage(article_json["id"])
         return news
 
     def get_article(self, id):

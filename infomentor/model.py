@@ -35,6 +35,7 @@ class User(ModelBase):
     notification = relationship("Notification", back_populates="user", uselist=False)
     apistatus = relationship("ApiStatus", back_populates="user", uselist=False)
     icalendar = relationship("ICloudCalendar", back_populates="user", uselist=False)
+    invitation = relationship("Invitation", back_populates="user", uselist=False)
     wantstatus = Column(Boolean)
     homeworks = relationship("Homework", back_populates="user")
     news = relationship("News", back_populates="user")
@@ -235,4 +236,24 @@ class ICloudCalendar(ModelBase):
         return "<ICloudCalendar(user='%s' cal='%s')>" % (
             self.icloud_user,
             self.calendarname,
+        )
+
+
+class Invitation(ModelBase):
+    """An icloud account with a calendar name"""
+
+    __tablename__ = "invitation_mails"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    email = Column(String)
+    user = relationship("User", back_populates="invitation", uselist=False)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+
+    def __repr__(self):
+        return "<Invitation(email='%s')>" % (
+            self.email,
         )

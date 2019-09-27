@@ -3,27 +3,36 @@ import os
 
 _config = None
 
+_defaults = {
+    "pushover": {
+        "apikey": "",
+    },
+    "general": {
+        "secretkey": "",
+        "baseurl": "",
+        "adminmail": "",
+        "im1url": "https://im1.infomentor.de/Germany/Germany/Production",
+        "mimrul": "https://mein.infomentor.de",
+    },
+    "smtp": {
+        "server": "",
+        "username": "",
+        "password": "",
+    },
+    "healthchecks": {
+        "url": "",
+    },
+}
 
 def _set_defaults(config):
-    config.add_section("pushover")
-    config.add_section("general")
-    config.add_section("smtp")
-    config["pushover"]["apikey"] = ""
-    config["general"]["secretkey"] = ""
-    config["general"]["baseurl"] = ""
-    config["general"]["adminmail"] = ""
-    config["general"]["im1url"] = "https://im1.infomentor.de/Germany/Germany/Production"
-    config["general"]["mimurl"] = "https://mein.infomentor.de"
-    config["smtp"]["server"] = ""
-    config["smtp"]["username"] = ""
-    config["smtp"]["password"] = ""
+    config = _defaults
 
 
 def load(cfg_file="infomentor.ini"):
     """Load the config from the file"""
     global _config
     if _config is None:
-        _config = configparser.ConfigParser()
+        _config = configparser.ConfigParser(_defaults)
         if not os.path.isfile(cfg_file):
             _set_defaults(_config)
             save(cfg_file)

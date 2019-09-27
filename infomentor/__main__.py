@@ -4,16 +4,17 @@ import argparse
 import datetime
 import sys
 import os
-from infomentor import db, model, connector, informer
+import requests
+from infomentor import db, model, connector, informer, config
 
 
-logformat = "{asctime} - {name:25s} - {levelname:8s} - {message}"
+logformat = "{asctime} - {name:25s}[{filename:20s}:{lineno:3d}] - {levelname:8s} - {message}"
 
 
 def logtofile():
     from logging.handlers import RotatingFileHandler
 
-    handler = RotatingFileHandler("log.txt", maxBytes=51200, backupCount=5)
+    handler = RotatingFileHandler("log.txt", maxBytes=1024*1024, backupCount=10)
     logging.basicConfig(
         level=logging.INFO, format=logformat, handlers=[handler], style="{"
     )
@@ -28,12 +29,14 @@ def parse_args(arglist):
     parser.add_argument(
         "--nolog", action="store_true", help="print log instead of logging to file"
     )
-    parser.add_argument("--adduser", type=str, help="add user")
-    parser.add_argument("--addfake", type=str, help="add fake")
-    parser.add_argument("--addpushover", type=str, help="add pushover")
-    parser.add_argument("--addmail", type=str, help="add mail")
-    parser.add_argument("--addcalendar", type=str, help="add icloud calendar")
+    parser.add_argument("--adduser", action='store_true', help="add user")
+    parser.add_argument("--addfake", action='store_true', help="add fake")
+    parser.add_argument("--addpushover", action='store_true', help="add pushover")
+    parser.add_argument("--addmail", action='store_true', help="add mail")
+    parser.add_argument("--addcalendar", action='store_true', help="add icloud calendar")
+    parser.add_argument("--addinvitation", action='store_true', help="add calendar invitation")
     parser.add_argument("--test", action="store_true", help="test")
+    parser.add_argument("--username", type=str, nargs='?', help="username")
     args = parser.parse_args(arglist)
     return args
 
@@ -104,6 +107,18 @@ def add_calendar(username):
     )
     session.commit()
 
+def add_invitation(username):
+    session = db.get_db()
+    user = session.query(model.User).filter(model.User.name == username).one_or_none()
+    if user is None:
+        print("user does not exist")
+        return
+    else:
+        print(f"Adding Mail for calendar invitation for user: {username}")
+    mail = input("Mail: ")
+    user.invitation = model.Invitation(email=mail)
+    session.commit()
+
 
 def add_mail(username):
     session = db.get_db()
@@ -123,6 +138,10 @@ def add_mail(username):
 def notify_users():
     logger = logging.getLogger(__name__)
     session = db.get_db()
+    cfg = config.load()
+    if cfg["healthchecks"]["url"] != "":
+        requests.get(cfg["healthchecks"]["url"])
+
     for user in session.query(model.User):
         logger.info("==== USER: %s =====", user.name)
         if user.password == "":
@@ -187,15 +206,17 @@ def main():
             logger.info("EXITING - PREVIOUS IS RUNNING")
             raise Exception()
         if args.addfake:
-            add_fake(args.addfake)
+            add_fake(args.username)
         elif args.adduser:
-            add_user(args.adduser)
+            add_user(args.username)
         elif args.addpushover:
-            add_pushover(args.addpushover)
+            add_pushover(args.username)
         elif args.addmail:
-            add_mail(args.addmail)
+            add_mail(args.username)
         elif args.addcalendar:
-            add_calendar(args.addcalendar)
+            add_calendar(args.username)
+        elif args.addinvitation:
+            add_invitation(args.username)
         else:
             notify_users()
     except Exception as e:
@@ -204,6 +225,64 @@ def main():
     finally:
         logger.info("EXITING--------------------- %s", os.getpid())
 
+def run_notify():
+    run_without_args(notify_users)
+
+def run_adduser():
+    run_with_args(add_user)
+
+def run_addfake():
+    run_with_args(add_fake)
+
+def run_addpushover():
+    run_with_args(add_pushover)
+
+def run_addmail():
+    run_with_args(add_mail)
+
+def run_addcalendar():
+    run_with_args(add_calendar)
+
+def run_addinvitation():
+    run_with_args(add_invitation)
+
+
+def run_with_args(fct):
+    args = parse_args(sys.argv[1:])
+    logtofile()
+    logger = logging.getLogger("Infomentor Notifier")
+    logger.info("STARTING-------------------- %s", os.getpid())
+    lock = flock.flock()
+    try:
+        if not lock.aquire():
+            logger.info("EXITING - PREVIOUS IS RUNNING")
+            raise Exception()
+        if args.username is None:
+            print('Provide Username using --username')
+            raise Exception('No username provided')
+        fct(args.username)
+    except Exception as e:
+        logger.info("Exceptional exit")
+        logger.exception("Info")
+    finally:
+        logger.info("EXITING--------------------- %s", os.getpid())
+
+def run_without_args(fct):
+    args = parse_args(sys.argv[1:])
+    logtofile()
+    logger = logging.getLogger("Infomentor Notifier")
+    logger.info("STARTING-------------------- %s", os.getpid())
+    try:
+        lock = flock.flock()
+        if not lock.aquire():
+            logger.info("EXITING - PREVIOUS IS RUNNING")
+            raise Exception()
+        fct()
+    except Exception as e:
+        logger.info("Exceptional exit")
+        logger.exception("Info")
+    finally:
+        logger.info("EXITING--------------------- %s", os.getpid())
 
 if __name__ == "__main__":
     main()
