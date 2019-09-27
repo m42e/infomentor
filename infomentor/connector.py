@@ -263,12 +263,15 @@ class Infomentor(object):
         """Builds a general infomentor (IM1) url"""
         return self._build_url(path, base=self.BASE_IM1)
 
-    def get_news_list(self):
+    def _get_list(self, ep, sort="lastPublishDate___SORT_DESC"):
         """Fetches the list of news"""
-        self.logger.info("fetching news")
-        self._do_post(self._mim_url("Communication/News/GetNewsList"))
-        news_json = self.get_json_return()
-        return news_json["items"]
+        self.logger.info("fetching %s", ep)
+        self._do_post(self._mim_url("Communication/{0}/Get{0}List".format(ep)), data={"pageSize":-1,"sortBy":"lastPublishDate___SORT_DESC"})
+        _json = self.get_json_return()
+        return _json["items"]
+
+    def get_news_list(self):
+        return self._get_list('News')
 
     def get_news_article(self, news_entry):
         """Receive all the article information"""
@@ -310,6 +313,12 @@ class Infomentor(object):
         filename = "{}.image".format(id)
         url = "Communication/NewsImage/GetImage?id={}".format(id)
         return self.download_file(url, directory="images", filename=filename)
+
+    def get_document_list(self):
+        return self._get_list('Documents')
+
+    def get_links_list(self):
+        return self._get_list('Links')
 
     def get_calendar(self, offset=0, weeks=1):
         """Fetches a list of calendar entries"""
