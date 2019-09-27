@@ -249,6 +249,7 @@ class Informer(object):
         msg['To'] = to
 
         part_email = MIMEText(eml_body,"html")
+        part_email_text = MIMEText(eml_body,"plain")
         part_cal = MIMEText(calobj.to_ical().decode('utf-8'),'calendar;method=REQUEST')
 
         msgAlternative = MIMEMultipart('alternative')
@@ -264,8 +265,9 @@ class Informer(object):
         encoders.encode_base64(eml_atch)
         eml_atch.add_header('Content-Transfer-Encoding', "")
 
-        msgAlternative.attach(part_email)
-        msgAlternative.attach(part_cal)
+        msg.attach(part_email)
+        msg.attach(part_email_text)
+        msg.attach(part_cal)
         self._send_mail(msg)
 
 
