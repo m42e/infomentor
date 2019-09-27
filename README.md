@@ -13,44 +13,6 @@ infomentor
 
 After the first run a `infomentor.ini` file is available which has a few values to be entered.
 
-## Manage Users
-
-
-### Step 1 create a user
-
-Provide the username and password for infomentor.
-```
-source venv/bin/activate
-adduser --username <username>
-```
-### Step 2 add notification mechanism
-```
-source venv/bin/activate
-addmail --username <username>
-```
-
-or
-
-```
-source venv/bin/activate
-addpushover --username <username>
-```
-
-### Step 3 (optional) Add iCloud calendar
-
-It is capable of syncing all the infomentor calendar elements to icloud calendar
-
-```
-source venv/bin/activate
-addcalendar --username <username>
-```
-
-## NB
-
-The login process is a bit scary and mostly hacked. It happens often on the first run, that the login is not ready, the second run then should work without errors.
-
-The script shall be run every 10 minutes, that will keep the session alive and minimize errors.
-
 
 ## Docker
 
@@ -68,4 +30,41 @@ for adding an user or all the commands run it adding -it to it, like:
 ```
 docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest adduser
 ```
+
+## Manage Users
+
+
+### Step 1 create a user
+
+Provide the username and password for infomentor.
+```
+docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest adduser --username <username>
+```
+### Step 2 add notification mechanism
+```
+docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest addmail --username <username>
+```
+
+or
+
+```
+docker run -it -v '/var/docker/infomentor/:/home/appuser' infomentor:latest pushover --username <username>
+```
+
+### Step 3 (optional) Add iCloud calendar 
+
+*NB:* This is currently not working. You could add it, but it won't work.
+
+It is capable of syncing all the infomentor calendar elements to icloud calendar
+
+```
+source venv/bin/activate
+addcalendar --username <username>
+```
+
+## NB
+
+The login process is a bit scary and mostly hacked. It happens often on the first run, that the login is not ready, the second run then should work without errors.
+
+The script shall be run every 10 minutes, that will keep the session alive and minimize errors.
 
