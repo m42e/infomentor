@@ -140,7 +140,7 @@ def notify_users():
     session = db.get_db()
     cfg = config.load()
     if cfg["healthchecks"]["url"] != "":
-        requests.get(cfg["healthchecks"]["url"])
+        requests.get(cfg["healthchecks"]["url"] + '/start')
 
     for user in session.query(model.User):
         logger.info("==== USER: %s =====", user.name)
@@ -188,6 +188,9 @@ def notify_users():
             user.apistatus.updateobj(statusinfo)
         logger.info("New API status: %s", user.apistatus)
         session.commit()
+
+    if cfg["healthchecks"]["url"] != "":
+        requests.get(cfg["healthchecks"]["url"])
 
 
 def main():
