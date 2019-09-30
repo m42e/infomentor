@@ -9,7 +9,7 @@ import datetime
 import math
 import pushover
 import urllib.parse
-from icalendar import Event, vDate, Calendar
+from icalendar import Event, vDate, Calendar, vCalAddress, vText, vBoolean
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
@@ -261,7 +261,7 @@ class Informer(object):
         attendee.params['ROLE'] = vText('REQ-PARTICIPANT')
         attendee.params['CUTYPE'] = vText('REQ-INDIVIDUAL')
         attendee.params['PARTSTAT'] = vText('ACCEPTED')
-        attendee.params['RSVP'] = vText('FALSE')
+        attendee.params['RSVP'] = vBoolean(False)
         event.add('attendee', attendee, encode=0)
         event.add("organizer", 'MAILTO:infomentor@09a.de')
 
