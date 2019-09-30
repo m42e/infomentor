@@ -54,6 +54,7 @@ class Informer(object):
         session = db.get_db()
         newslist = self.im.get_news_list()
         for news_entry in newslist:
+            self.logger.debug("parsing %s", news_entry["id"])
             news = (
                 session.query(model.News)
                 .filter(model.News.news_id == news_entry["id"])
