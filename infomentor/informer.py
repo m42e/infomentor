@@ -262,7 +262,7 @@ class Informer(object):
         attendee.params['ROLE'] = vText('REQ-PARTICIPANT')
         attendee.params['CUTYPE'] = vText('REQ-INDIVIDUAL')
         attendee.params['PARTSTAT'] = vText('ACCEPTED')
-        attendee.params['RSVP'] = vBoolean(0)
+        attendee.params['RSVP'] = 'FALSE'
         event.add('attendee', attendee, encode=0)
         event.add("organizer", 'MAILTO:infomentor@09a.de')
 
