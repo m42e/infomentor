@@ -252,6 +252,19 @@ class Informer(object):
         msg["From"] = fr
         msg["To"] = to
 
+        calobj.add("PRODID", "infomentor_py")
+        calobj.add("METHOD", "REQUEST")
+        calobj.add("calscale", "GREGORIAN")
+        calobj.add("version", "2.0")
+        attendee = vCalAddress(f'MAILTO:{to}')
+        attendee.params['cn'] = vText(to)
+        attendee.params['ROLE'] = vText('REQ-PARTICIPANT')
+        attendee.params['CUTYPE'] = vText('REQ-INDIVIDUAL')
+        attendee.params['PARTSTAT'] = vText('ACCEPTED')
+        attendee.params['RSVP'] = vText('FALSE')
+        event.add('attendee', attendee, encode=0)
+        event.add("organizer", 'MAILTO:infomentor@09a.de')
+
         part_email = MIMEText(eml_body, "html")
         part_email_text = MIMEText(eml_body, "plain")
         part_cal = MIMEText(calobj.to_ical().decode("utf-8"), "calendar;method=REQUEST")
