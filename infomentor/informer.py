@@ -333,7 +333,7 @@ class Informer(object):
                 event_details = self.im.get_event(entry["id"])
                 calend = Calendar()
                 event = Event()
-                eent.add("uid", uid)
+                event.add("uid", uid)
                 event.add("summary", entry["title"])
                 event.add("categories", 'Schule')
                 event.add("categories", 'Jules Verne Campus')
