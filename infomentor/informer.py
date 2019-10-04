@@ -1,4 +1,4 @@
-from infomentor import model, db, icloudcalendar, config
+from infomentor import model, db, icloudcalendar, config, icalendar_addons
 import logging
 import uuid
 import os
@@ -9,13 +9,14 @@ import datetime
 import math
 import pushover
 import urllib.parse
-from icalendar import Event, vDate, Calendar, vCalAddress, vText, vBoolean
+from icalendar import Event, vDate, Calendar, vCalAddress, vText, vBoolean, Timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.base import MIMEBase
 from email import encoders
 import mimetypes
 import smtplib
+
 
 cfg = config.load()
 pushover.init(cfg["pushover"]["apikey"])
@@ -257,6 +258,7 @@ class Informer(object):
         calobj.add("METHOD", "REQUEST")
         calobj.add("calscale", "GREGORIAN")
         calobj.add("version", "2.0")
+        calobj.add_component(icalendar_addons.generate_vtimezone('Europe/Berlin'))
         attendee = vCalAddress(f'MAILTO:{to}')
         attendee.params['cn'] = vText(to)
         attendee.params['ROLE'] = vText('REQ-PARTICIPANT')
