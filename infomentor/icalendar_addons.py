@@ -6,7 +6,7 @@ def generate_vtimezone(timezone, for_date=None):
     if not timezone or 'utc' in timezone.lower():  # UTC doesn't need a timezone definition
         return None
     if not for_date:
-        for_date = now()
+        for_date = datetime.datetime.now()
     try:
         z = pytz.timezone(timezone)
     except pytz.UnknownTimeZoneError:
@@ -32,7 +32,7 @@ def generate_vtimezone(timezone, for_date=None):
 def _vtimezone_without_dst(std, timezone):
     vtimezone = icalendar.Timezone(tzid=timezone)
     standard = icalendar.TimezoneStandard()
-    utc_offset, dst_offset, tz_name = std[1]
+    utc_offset, _, tz_name = std[1]
     standard.add('dtstart', std[0])
     standard.add('tzoffsetfrom', utc_offset)
     standard.add('tzoffsetto', utc_offset)
@@ -44,7 +44,7 @@ def _vtimezone_without_dst(std, timezone):
 def _vtimezone_with_dst(dst1, std1, dst2, std2, timezone):
     vtimezone = icalendar.Timezone(tzid=timezone)
     daylight = icalendar.TimezoneDaylight()
-    utc_offset, dst_offset, tz_name = dst1[1]
+    utc_offset, _, tz_name = dst1[1]
     offsetfrom = std1[1][0]
     daylight.add('dtstart', dst1[0] + offsetfrom)
     daylight.add('rdate', dst1[0] + offsetfrom)
@@ -55,7 +55,7 @@ def _vtimezone_with_dst(dst1, std1, dst2, std2, timezone):
     vtimezone.add_component(daylight)
 
     standard = icalendar.TimezoneStandard()
-    utc_offset, dst_offset, tz_name = std1[1]
+    utc_offset, _, tz_name = std1[1]
     offsetfrom = dst1[1][0]
     standard.add('dtstart', std1[0] + offsetfrom)
     standard.add('rdate', std1[0] + offsetfrom)
