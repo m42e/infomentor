@@ -335,8 +335,7 @@ class Informer(object):
                 event = Event()
                 event.add("uid", uid)
                 event.add("summary", entry["title"])
-                event.add("categories", 'Schule')
-                event.add("categories", 'Jules Verne Campus')
+                event.add("categories", ['Jules Verne Campus', 'Schule'])
                 event.add("dtstamp", datetime.datetime.now())
                 if not event_details["allDayEvent"]:
                     event.add("dtstart", dateparser.parse(entry["start"]))
