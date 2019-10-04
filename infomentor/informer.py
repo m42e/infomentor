@@ -333,8 +333,10 @@ class Informer(object):
                 event_details = self.im.get_event(entry["id"])
                 calend = Calendar()
                 event = Event()
-                event.add("uid", uid)
+                eent.add("uid", uid)
                 event.add("summary", entry["title"])
+                event.add("categories", 'Schule')
+                event.add("categories", 'Jules Verne Campus')
                 event.add("dtstamp", datetime.datetime.now())
                 if not event_details["allDayEvent"]:
                     event.add("dtstart", dateparser.parse(entry["start"]))
