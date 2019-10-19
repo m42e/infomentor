@@ -253,8 +253,9 @@ class Informer(object):
         msg["Subject"] = event["summary"]
         msg["From"] = fr
         msg["To"] = to
+         msg["Content-class"] = "urn:content-classes:calendarmessage"
 
-        calobj.add("PRODID", "infomentor_py")
+        calobj.add("PRODID", "-// infomentor_py /")
         calobj.add("METHOD", "REQUEST")
         calobj.add("calscale", "GREGORIAN")
         calobj.add("version", "2.0")
@@ -270,7 +271,7 @@ class Informer(object):
 
         part_email = MIMEText(eml_body, "html")
         part_email_text = MIMEText(eml_body, "plain")
-        part_cal = MIMEText(calobj.to_ical().decode("utf-8"), "calendar;method=REQUEST")
+        part_cal = MIMEText(calobj.to_ical().decode("utf-8"), "calendar;method=REQUEST;name='invite.ics'")
 
         msgAlternative = MIMEMultipart("alternative")
         msg.attach(msgAlternative)
@@ -287,8 +288,8 @@ class Informer(object):
         encoders.encode_base64(eml_atch)
         eml_atch.add_header("Content-Transfer-Encoding", "")
 
-        msg.attach(part_email)
-        msg.attach(part_email_text)
+        #msg.attach(part_email)
+        #msg.attach(part_email_text)
         msg.attach(part_cal)
         self._send_mail(msg)
 
