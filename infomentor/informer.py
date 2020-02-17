@@ -253,7 +253,7 @@ class Informer(object):
         msg["Subject"] = event["summary"]
         msg["From"] = fr
         msg["To"] = to
-         msg["Content-class"] = "urn:content-classes:calendarmessage"
+        msg["Content-class"] = "urn:content-classes:calendarmessage"
 
         calobj.add("PRODID", "-// infomentor_py /")
         calobj.add("METHOD", "REQUEST")
